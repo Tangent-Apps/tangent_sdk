@@ -2,8 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
-import 'package:tangent_sdk/src/services/app_tracking_transparency_service.dart';
-import 'package:tangent_sdk/src/services/app_review_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
 
 class TangentSDK {
@@ -57,36 +55,36 @@ class TangentSDK {
   Future<void> _initializeServices() async {
     // Initialize crash reporting
     if (_config.enableCrashlytics) {
-      await log('🔥 Initializing Firebase Crashlytics Service');
+      log('🔥 Initializing Firebase Crashlytics Service');
       _crashReporting = const FirebaseCrashReportingService();
       await _crashReporting!.initialize();
-      await log('✅ Firebase Crashlytics Service initialized');
+      log('✅ Firebase Crashlytics Service initialized');
     }
 
     // Initialize app check
     if (_config.enableAppCheck) {
-      await log('🛡️ Initializing Firebase App Check Service');
+      log('🔥 Initializing Firebase App Check Service');
       _appCheck = const FirebaseAppCheckService();
       await _appCheck!.activate();
-      await log('✅ Firebase App Check Service initialized');
+      log('✅ Firebase App Check Service initialized');
     }
 
     // Initialize analytics services
     if (_config.enableAnalytics) {
       if (_config.mixpanelToken != null) {
-        await log('🔥 Initializing Mixpanel Analytics Service');
+        log('🔥 Initializing Mixpanel Analytics Service');
         final mixpanel = MixpanelAnalyticsService(_config.mixpanelToken!);
         await mixpanel.initialize();
         _analyticsServices.add(mixpanel);
-        await log('✅ Mixpanel Analytics Service initialized');
+        log('✅ Mixpanel Analytics Service initialized');
       }
 
       if (_config.adjustAppToken != null && _config.environment != null) {
-        await log('🔥 Initializing Adjust Analytics Service');
+        log('🔥 Initializing Adjust Analytics Service');
         final adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
         await adjust.initialize();
         _analyticsServices.add(adjust);
-        await log('✅ Adjust Analytics Service initialized');
+        log('✅ Adjust Analytics Service initialized');
       } else {
         throw ServiceNotInitializedException('AdjustAnalyticsService');
       }
@@ -94,22 +92,22 @@ class TangentSDK {
 
     // Initialize purchases service
     if (_config.enableRevenue && _config.revenueCatApiKey != null) {
-      await log('🔥 Initializing RevenueCat Service');
+      log('🔥 Initializing RevenueCat Service');
       _revenueService = RevenueCatService(_config.revenueCatApiKey!);
       await _revenueService!.initialize();
-      await log('✅ RevenueCat Service initialized');
+      log('✅ RevenueCat Service initialized');
     }
 
     // Initialize app tracking transparency
-    await log('🔥 Initializing App Tracking Transparency Service');
+    log('🔥 Initializing App Tracking Transparency Service');
     _appTrackingTransparency = AppTrackingTransparencyService();
     await _appTrackingTransparency!.init();
-    await log('✅ App Tracking Transparency Service initialized');
+    log('✅ App Tracking Transparency Service initialized');
 
     // Initialize app review service (utility - always available)
-    await log('⭐ Initializing App Review Service');
+    log('⭐ Initializing App Review Service');
     _appReview = AppReviewService();
-    await log('✅ App Review Service initialized');
+    log('✅ App Review Service initialized');
   }
 
   Future<void> recordError(dynamic exception, StackTrace? stackTrace, {bool fatal = false, Map<String, String>? customKeys}) async {

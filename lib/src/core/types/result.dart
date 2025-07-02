@@ -22,14 +22,26 @@ sealed class Result<T> {
     throw StateError('Cannot access error on a success result');
   }
 
-  R fold<R>({
-    required R Function(T data) onSuccess,
-    required R Function(TangentSDKException error) onFailure,
-  }) {
+  R fold<R>({required R Function(T data) onSuccess, required R Function(TangentSDKException error) onFailure}) {
     return switch (this) {
       Success<T>(data: final data) => onSuccess(data),
       Failure<T>(error: final error) => onFailure(error),
     };
+  }
+
+  Future<R> foldAsync<R>({required R Function(T data) onSuccess, required R Function(TangentSDKException error) onFailure}) async {
+    return switch (this) {
+      Success<T>(data: final data) => onSuccess(data),
+      Failure<T>(error: final error) => onFailure(error),
+    };
+  }
+
+  R when<R>({required R Function(T data) success, required R Function(TangentSDKException error) failure}) {
+    return fold(onSuccess: success, onFailure: failure);
+  }
+
+  Future<R> whenAsync<R>({required R Function(T data) success, required R Function(TangentSDKException error) failure}) {
+    return foldAsync(onSuccess: success, onFailure: failure);
   }
 
   Result<R> map<R>(R Function(T data) transform) {
@@ -110,8 +122,7 @@ final class Success<T> extends Result<T> {
 
   @override
   bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other is Success<T> && data == other.data);
+    return identical(this, other) || (other is Success<T> && data == other.data);
   }
 
   @override
@@ -129,8 +140,7 @@ final class Failure<T> extends Result<T> {
 
   @override
   bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other is Failure<T> && error == other.error);
+    return identical(this, other) || (other is Failure<T> && error == other.error);
   }
 
   @override
@@ -141,12 +151,14 @@ final class Failure<T> extends Result<T> {
 }
 
 extension FutureResultExtension<T> on Future<Result<T>> {
-  Future<R> foldAsync<R>({
-    required R Function(T data) onSuccess,
-    required R Function(TangentSDKException error) onFailure,
-  }) async {
+  Future<R> foldAsync<R>({required R Function(T data) onSuccess, required R Function(TangentSDKException error) onFailure}) async {
     final result = await this;
     return result.fold(onSuccess: onSuccess, onFailure: onFailure);
+  }
+
+  /// Async version of [when].
+  Future<R> whenAsync<R>({required R Function(T data) success, required R Function(TangentSDKException error) failure}) {
+    return foldAsync(onSuccess: success, onFailure: failure);
   }
 
   Future<Result<R>> mapAsync<R>(R Function(T data) transform) async {
@@ -154,9 +166,7 @@ extension FutureResultExtension<T> on Future<Result<T>> {
     return result.map(transform);
   }
 
-  Future<Result<R>> flatMapAsync<R>(
-    Future<Result<R>> Function(T data) transform,
-  ) async {
+  Future<Result<R>> flatMapAsync<R>(Future<Result<R>> Function(T data) transform) async {
     final result = await this;
     return switch (result) {
       Success<T>(data: final data) => await transform(data),
@@ -164,9 +174,7 @@ extension FutureResultExtension<T> on Future<Result<T>> {
     };
   }
 
-  Future<Result<T>> mapErrorAsync(
-    TangentSDKException Function(TangentSDKException error) transform,
-  ) async {
+  Future<Result<T>> mapErrorAsync(TangentSDKException Function(TangentSDKException error) transform) async {
     final result = await this;
     return result.mapError(transform);
   }
@@ -195,7 +203,7 @@ Future<Result<T>> resultOfAsync<T>(Future<T> Function() computation) async {
 
 Result<List<T>> combineResults<T>(List<Result<T>> results) {
   final List<T> successValues = [];
-  
+
   for (final result in results) {
     switch (result) {
       case Success<T>(data: final data):
@@ -205,7 +213,7 @@ Result<List<T>> combineResults<T>(List<Result<T>> results) {
         return Failure(error);
     }
   }
-  
+
   return Success(successValues);
 }
 
@@ -217,14 +225,9 @@ Result<(T1, T2)> combine2Results<T1, T2>(Result<T1> result1, Result<T2> result2)
   };
 }
 
-Result<(T1, T2, T3)> combine3Results<T1, T2, T3>(
-  Result<T1> result1, 
-  Result<T2> result2, 
-  Result<T3> result3
-) {
+Result<(T1, T2, T3)> combine3Results<T1, T2, T3>(Result<T1> result1, Result<T2> result2, Result<T3> result3) {
   return switch ((result1, result2, result3)) {
-    (Success<T1>(data: final data1), Success<T2>(data: final data2), Success<T3>(data: final data3)) => 
-      Success((data1, data2, data3)),
+    (Success<T1>(data: final data1), Success<T2>(data: final data2), Success<T3>(data: final data3)) => Success((data1, data2, data3)),
     (Failure<T1>(error: final error), _, _) => Failure(error),
     (_, Failure<T2>(error: final error), _) => Failure(error),
     (_, _, Failure<T3>(error: final error)) => Failure(error),
