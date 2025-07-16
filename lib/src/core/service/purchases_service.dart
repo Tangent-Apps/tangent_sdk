@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:meta/meta.dart';
-import 'package:tangent_sdk/src/core/types/product.dart';
-import 'package:tangent_sdk/src/core/types/purchase.dart';
+import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
+import 'package:tangent_sdk/src/core/model/product.dart';
+import 'package:tangent_sdk/src/core/model/purchase.dart';
 import 'package:tangent_sdk/src/core/enum/puchase_result_enum.dart';
 import '../types/result.dart';
 
@@ -13,11 +14,14 @@ abstract class PurchasesService {
 
   Future<Result<List<Product>>> getProducts(List<String> productIds);
 
-  Future<Result<PurchaseResult>> purchaseProduct(String productId);
+  Future<Result<PurchaseResult>> purchaseProductById(String productId);
 
-  Future<Result<bool>> restorePurchases();
+  Future<Result<PurchaseResult>> purchaseProduct(dynamic product);
 
-  Future<Result<bool>> isProductPurchased(String productId);
+
+  Future<Result<CustomerPurchasesInfo>> restorePurchases();
+
+  Future<Result<bool>> checkActiveSubscription();
 
   Future<Result<List<Product>>> getOffering(String offerId);
 
@@ -25,7 +29,7 @@ abstract class PurchasesService {
 
   Future<Result<bool>> checkActiveSubscriptionToEntitlement(String entitlementId);
 
-  Future<Result<bool>> checkActiveSubscription();
+  Future<Result<CustomerPurchasesInfo>> getCustomerPurchasesInfo();
 
-  Stream<bool> get hasActivePurchasesStream;
+  Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream;
 }

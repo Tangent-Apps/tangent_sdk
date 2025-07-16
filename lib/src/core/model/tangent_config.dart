@@ -7,6 +7,8 @@ class TangentConfig {
   final String? adjustAppToken;
   final TangentEnvironment? environment;
   final String? revenueCatApiKey;
+  final String? adjustSubscriptionToken;
+  final String? adjustSubscriptionRenewalToken;
   final bool enableCrashlytics;
   final bool enableAppCheck;
   final bool enableAnalytics;
@@ -15,6 +17,8 @@ class TangentConfig {
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
+    this.adjustSubscriptionToken,
+    this.adjustSubscriptionRenewalToken,
     this.environment,
     this.revenueCatApiKey,
     this.enableCrashlytics = true,

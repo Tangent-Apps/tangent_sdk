@@ -1,1 +1,1 @@
-enum PurchaseResult { success, userCancelled, storeError, notAllowed, alreadyOwned, invalid }
+enum PurchaseResult { success, userCancelled, alreadyOwned, invalid }

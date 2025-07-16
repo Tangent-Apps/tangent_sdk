@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
+import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
 
@@ -30,10 +32,17 @@ class TangentSDK {
   ///[config] The configuration object containing the SDK settings.
   ///[firebaseOptions] Optional Firebase options for initializing Firebase.
 
-  static Future<TangentSDK> initialize({required TangentConfig config, FirebaseOptions? firebaseOptions}) async {
+  static Future<TangentSDK> initialize({
+    required TangentConfig config,
+    FirebaseOptions? firebaseOptions,
+    bool enableDebugLogging = false,
+  }) async {
     if (_instance != null) {
       return _instance!;
     }
+
+    // Configure logging
+    AppLogger.setDebugMode(enableDebugLogging);
 
     // Initialize Firebase if options provided
     if (firebaseOptions != null) {
@@ -55,65 +64,80 @@ class TangentSDK {
   Future<void> _initializeServices() async {
     // Initialize crash reporting
     if (_config.enableCrashlytics) {
-      log('🔥 Initializing Firebase Crashlytics Service');
+      AppLogger.info('Initializing Firebase Crashlytics Service', tag: 'CrashReporting');
       _crashReporting = const FirebaseCrashReportingService();
       await _crashReporting!.initialize();
-      log('✅ Firebase Crashlytics Service initialized');
+      AppLogger.info('Firebase Crashlytics Service initialized', tag: 'CrashReporting');
     }
 
     // Initialize app check
     if (_config.enableAppCheck) {
-      log('🔥 Initializing Firebase App Check Service');
+      AppLogger.info('Initializing Firebase App Check Service', tag: 'AppCheck');
       _appCheck = const FirebaseAppCheckService();
       await _appCheck!.activate();
-      log('✅ Firebase App Check Service initialized');
+      AppLogger.info('Firebase App Check Service initialized', tag: 'AppCheck');
     }
 
     // Initialize analytics services
     if (_config.enableAnalytics) {
       if (_config.mixpanelToken != null) {
-        log('🔥 Initializing Mixpanel Analytics Service');
+        AppLogger.info('Initializing Mixpanel Analytics Service', tag: 'Analytics');
         final mixpanel = MixpanelAnalyticsService(_config.mixpanelToken!);
         await mixpanel.initialize();
         _analyticsServices.add(mixpanel);
-        log('✅ Mixpanel Analytics Service initialized');
+        AppLogger.info('Mixpanel Analytics Service initialized', tag: 'Analytics');
       }
 
       if (_config.adjustAppToken != null && _config.environment != null) {
-        log('🔥 Initializing Adjust Analytics Service');
+        AppLogger.info('Initializing Adjust Analytics Service', tag: 'Analytics');
         final adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
         await adjust.initialize();
         _analyticsServices.add(adjust);
-        log('✅ Adjust Analytics Service initialized');
+        AppLogger.info('Adjust Analytics Service initialized', tag: 'Analytics');
       } else {
         throw ServiceNotInitializedException('AdjustAnalyticsService');
+      }
+
+      if (_config.adjustSubscriptionToken != null &&
+          _config.adjustSubscriptionRenewalToken != null &&
+          _config.adjustSubscriptionToken!.isNotEmpty &&
+          _config.adjustSubscriptionRenewalToken!.isNotEmpty) {
+        AppLogger.info('Adjust Subscription Events Tracking Service initialized', tag: 'Adjust-Subscription');
+      } else {
+        throw ValidationException('adjustSubscriptionToken & adjustSubscriptionRenewalToken', 'Cannot be empty');
       }
     }
 
     // Initialize purchases service
     if (_config.enableRevenue && _config.revenueCatApiKey != null) {
-      log('🔥 Initializing RevenueCat Service');
+      AppLogger.info('Initializing RevenueCat Service', tag: 'Revenue');
       _revenueService = RevenueCatService(_config.revenueCatApiKey!);
       await _revenueService!.initialize();
-      log('✅ RevenueCat Service initialized');
+      AppLogger.info('RevenueCat Service initialized', tag: 'Revenue');
     }
 
     // Initialize app tracking transparency
-    log('🔥 Initializing App Tracking Transparency Service');
+    AppLogger.info('Initializing App Tracking Transparency Service', tag: 'Tracking');
     _appTrackingTransparency = AppTrackingTransparencyService();
     await _appTrackingTransparency!.init();
-    log('✅ App Tracking Transparency Service initialized');
+    AppLogger.info('App Tracking Transparency Service initialized', tag: 'Tracking');
 
     // Initialize app review service (utility - always available)
-    log('⭐ Initializing App Review Service');
+    AppLogger.info('Initializing App Review Service', tag: 'Review');
     _appReview = AppReviewService();
-    log('✅ App Review Service initialized');
+    AppLogger.info('App Review Service initialized', tag: 'Review');
   }
 
-  Future<void> recordError(dynamic exception, StackTrace? stackTrace, {bool fatal = false, Map<String, String>? customKeys}) async {
+  Future<void> recordError(
+    dynamic exception,
+    StackTrace? stackTrace, {
+    bool fatal = false,
+    Map<String, String>? customKeys,
+  }) async {
     await _crashReporting?.recordError(exception, stackTrace, fatal: fatal, customKeys: customKeys);
   }
 
+  ///Log a message to the crash reporting service
   Future<void> log(String message) async {
     await _crashReporting?.log(message);
   }
@@ -123,20 +147,20 @@ class TangentSDK {
   Future<void> trackEvent(String event, {Map<String, Object>? properties}) async {
     for (final analytics in _analyticsServices) {
       if (analytics is MixpanelAnalyticsService) {
-        await analytics.logEvent(event, properties: {...properties ?? {}, 'tangent_sdk_version': '0.0.1'});
+        await analytics.logEvent(event, properties: properties);
       }
     }
   }
 
   /// Track failure events with specific failure reason (specifically for Mixpanel)
-  Future<void> trackFailureEvent({required String eventName, required String failureReason, Map<String, Object>? properties}) async {
+  Future<void> trackFailureEvent({
+    required String eventName,
+    required String failureReason,
+    Map<String, Object>? properties,
+  }) async {
     for (final analytics in _analyticsServices) {
       if (analytics is MixpanelAnalyticsService) {
-        await analytics.logFailureEvent(
-          eventName: eventName,
-          failureReason: failureReason,
-          properties: {...properties ?? {}, 'tangent_sdk_version': '0.0.1'},
-        );
+        await analytics.logFailureEvent(eventName: eventName, failureReason: failureReason, properties: properties);
       }
     }
   }
@@ -165,13 +189,39 @@ class TangentSDK {
     return await _revenueService?.getProducts(productIds) ?? const Success([]);
   }
 
-  Future<Result<PurchaseResult>> purchaseProduct(String productId) async {
-    return await _revenueService?.purchaseProduct(productId) ?? const Success(PurchaseResult.invalid);
+  Future<Result<PurchaseResult>> purchaseProductById(String productId) async {
+    final purchaseResult =
+        await _revenueService?.purchaseProductById(productId) ?? const Success(PurchaseResult.invalid);
+    if (_config.adjustSubscriptionToken == null ||
+        _config.adjustSubscriptionToken!.isEmpty ||
+        _config.adjustSubscriptionRenewalToken == null ||
+        _config.adjustSubscriptionRenewalToken!.isEmpty) {
+      return purchaseResult;
+    }
+    return purchaseResult;
+
+    // purchaseResult.when(
+    //   success: (result) {
+    //     if (purchaseResult == PurchaseResult.success) {
+    //       try {
+    //         trackSubscription(
+    //           eventToken: _config.adjustSubscriptionToken!,
+    //           price: price,
+    //           currency: currency,
+    //           subscriptionId: subscriptionId,
+    //           eventName: "did_purchase",
+    //         );
+    //       } catch (err) {}
+    //     }
+    //   },
+    //   failure: (err) {
+    //     return purchaseResult;
+    //   },
+    // );
   }
 
-  Future<Result<bool>> isProductPurchased(String productId) async {
-    final result = await _revenueService?.isProductPurchased(productId) ?? const Success(false);
-    return result;
+  Future<Result<PurchaseResult>> purchaseProduct(dynamic product) async {
+    return await _revenueService?.purchaseProduct(product) ?? const Success(PurchaseResult.invalid);
   }
 
   Future<Result<bool>> checkActiveSubscription() async {
@@ -182,8 +232,9 @@ class TangentSDK {
     return await _revenueService?.checkActiveSubscriptionToEntitlement(entitlementId) ?? const Success(false);
   }
 
-  Future<Result<bool>> restorePurchases() async {
-    return await _revenueService?.restorePurchases() ?? const Success(false);
+  Future<Result<CustomerPurchasesInfo>> restorePurchases() async {
+    return await _revenueService?.restorePurchases() ??
+        Success(CustomerPurchasesInfo(hasActiveSubscription: false, originalAppUserId: '', purchases: []));
   }
 
   Future<Result<List<Product>>> getOffering(String offeringId) async {
@@ -194,7 +245,8 @@ class TangentSDK {
     return await _revenueService?.getOfferings() ?? const Success([]);
   }
 
-  Stream<bool> get hasActiveSubscriptionStream => _revenueService?.hasActivePurchasesStream ?? const Stream.empty();
+  Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
+      _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
 
   // App Tracking Transparency Methods
   Future<void> requestTrackingAuthorization() async {
