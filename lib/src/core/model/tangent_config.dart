@@ -13,6 +13,7 @@ class TangentConfig {
   final bool enableAppCheck;
   final bool enableAnalytics;
   final bool enableRevenue;
+  final bool automaticTrackSubscription;
 
   const TangentConfig({
     this.mixpanelToken,
@@ -25,5 +26,6 @@ class TangentConfig {
     this.enableAppCheck = true,
     this.enableAnalytics = true,
     this.enableRevenue = true,
+    this.automaticTrackSubscription = true,
   });
 }

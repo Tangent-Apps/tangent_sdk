@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' as service;
 import 'package:meta/meta.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:tangent_sdk/src/core/enum/puchase_result_enum.dart';
 import 'package:tangent_sdk/src/core/helper/customer_purchase_info_helper.dart';
+import 'package:tangent_sdk/src/core/helper/purchase_error_helper.dart';
 import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
@@ -64,11 +64,11 @@ class RevenueCatService extends PurchasesService {
       }
 
       return products;
-    }).mapErrorAsync((error) => PurchaseException('getProducts', originalError: error.originalError));
+    }).mapErrorAsync((error) => PurchaseMethodException('getProducts', originalError: error.originalError));
   }
 
   @override
-  Future<Result<PurchaseResult>> purchaseProductById(String productId) async {
+  Future<Result<Product>> purchaseProductById(String productId) async {
     if (productId.trim().isEmpty) {
       return Failure(ValidationException('productId', 'Cannot be empty'));
     }
@@ -78,52 +78,44 @@ class RevenueCatService extends PurchasesService {
         final targetPackage = await Purchases.getProducts([productId]);
 
         if (targetPackage.isEmpty) {
-          return PurchaseResult.invalid;
+          throw PurchaseMethodException('Product not found');
         }
 
-        final customerInfo = await Purchases.purchaseStoreProduct(targetPackage.first);
-        final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
-        _customerPurchasesInfoController.add(customerPurchasesInfo);
-
-        return PurchaseResult.success;
-      } on service.PlatformException catch (e) {
-        final errorCode = PurchasesErrorHelper.getErrorCode(e);
-        switch (errorCode) {
-          case PurchasesErrorCode.purchaseCancelledError:
-            return PurchaseResult.userCancelled;
-          case PurchasesErrorCode.receiptAlreadyInUseError:
-            return PurchaseResult.alreadyOwned;
-          default:
-            return PurchaseResult.invalid;
-        }
-      }
-    }).mapErrorAsync((error) => PurchaseException('purchaseProduct', originalError: error.originalError));
-  }
-
-  @override
-  Future<Result<PurchaseResult>> purchaseProduct(dynamic product) {
-    if (product is! StoreProduct) {
-      return Future.value(Failure(ValidationException('product', 'Invalid product type')));
-    }
-    final StoreProduct storeProduct = product;
-    return resultOfAsync(() async {
-      try {
+        final storeProduct = targetPackage.first;
         final customerInfo = await Purchases.purchaseStoreProduct(storeProduct);
         final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
         _customerPurchasesInfoController.add(customerPurchasesInfo);
-        return PurchaseResult.success;
+
+        return Product(
+          id: storeProduct.identifier,
+          title: storeProduct.title,
+          description: storeProduct.description,
+          price: storeProduct.price,
+          priceString: storeProduct.priceString,
+          storeProduct: storeProduct,
+          currencyCode: storeProduct.currencyCode,
+          introductoryPrice: storeProduct.introductoryPrice?.priceString,
+        );
       } on service.PlatformException catch (e) {
         final errorCode = PurchasesErrorHelper.getErrorCode(e);
-        switch (errorCode) {
-          case PurchasesErrorCode.purchaseCancelledError:
-            return PurchaseResult.userCancelled;
-          case PurchasesErrorCode.receiptAlreadyInUseError:
-            return PurchaseResult.alreadyOwned;
-          default:
-            return PurchaseResult.invalid;
-        }
+        throw PurchaseErrorHelper.getAppropriateException(errorCode: errorCode, originalError: e);
       }
-    }).mapErrorAsync((error) => PurchaseException('purchaseProduct', originalError: error.originalError));
+    }).mapErrorAsync((error) => PurchaseMethodException('purchaseProductById', originalError: error.originalError));
+  }
+
+  @override
+  Future<Result<CustomerPurchasesInfo>> purchaseProduct(Product product) async {
+    try {
+      final customerInfo = await Purchases.purchaseStoreProduct(product.storeProduct);
+      final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
+      _customerPurchasesInfoController.add(customerPurchasesInfo);
+      return Success(customerPurchasesInfo);
+    } on service.PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      return Future.value(Failure(PurchaseErrorHelper.getAppropriateException(errorCode: errorCode, originalError: e)));
+    } catch (err) {
+      return Future.value(Failure(PurchaseMethodException('purchaseProduct', originalError: err)));
+    }
   }
 
   @override
@@ -132,7 +124,7 @@ class RevenueCatService extends PurchasesService {
       final CustomerInfo result = await Purchases.restorePurchases();
       final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(result);
       return customerPurchasesInfo;
-    }).mapErrorAsync((error) => PurchaseException('restorePurchases', originalError: error.originalError));
+    }).mapErrorAsync((error) => PurchaseMethodException('restorePurchases', originalError: error.originalError));
   }
 
   void dispose() {
@@ -145,13 +137,8 @@ class RevenueCatService extends PurchasesService {
   Future<Result<bool>> checkActiveSubscription() async {
     return resultOfAsync(() async {
       final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
-      print("customer subscription history ${customerInfo.allPurchaseDates}");
-      print(
-        "customer subscription history allPurchasedProductIdentifiers ${customerInfo.allPurchasedProductIdentifiers}",
-      );
-
       return customerInfo.activeSubscriptions.isNotEmpty;
-    }).mapErrorAsync((error) => PurchaseException('checkActiveSubscription', originalError: error.originalError));
+    }).mapErrorAsync((error) => PurchaseMethodException('checkActiveSubscription', originalError: error.originalError));
   }
 
   @override
@@ -164,7 +151,7 @@ class RevenueCatService extends PurchasesService {
       final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
       return customerInfo.entitlements.active.containsKey(entitlementId);
     }).mapErrorAsync(
-      (error) => PurchaseException('checkActiveSubscriptionToEntitlement', originalError: error.originalError),
+      (error) => PurchaseMethodException('checkActiveSubscriptionToEntitlement', originalError: error.originalError),
     );
   }
 
@@ -195,7 +182,7 @@ class RevenueCatService extends PurchasesService {
         }
       }
       return products;
-    }).mapErrorAsync((error) => PurchaseException('getOffering', originalError: error.originalError));
+    }).mapErrorAsync((error) => PurchaseMethodException('getOffering', originalError: error.originalError));
   }
 
   @override
@@ -221,7 +208,7 @@ class RevenueCatService extends PurchasesService {
         }
       }
       return products;
-    }).mapErrorAsync((error) => PurchaseException('getOfferings', originalError: error.originalError));
+    }).mapErrorAsync((error) => PurchaseMethodException('getOfferings', originalError: error.originalError));
   }
 
   @override
@@ -229,10 +216,12 @@ class RevenueCatService extends PurchasesService {
 
   @override
   Future<Result<CustomerPurchasesInfo>> getCustomerPurchasesInfo() async {
-    return resultOfAsync(() async {
-      final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
-      final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
-      return customerPurchasesInfo;
-    }).mapErrorAsync((error) => PurchaseException('getCustomerPurchasesInfo', originalError: error.originalError));
+    return resultOfAsync(
+      () async {
+        final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
+        final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
+        return customerPurchasesInfo;
+      },
+    ).mapErrorAsync((error) => PurchaseMethodException('getCustomerPurchasesInfo', originalError: error.originalError));
   }
 }

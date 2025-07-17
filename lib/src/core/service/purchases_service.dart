@@ -2,8 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:meta/meta.dart';
 import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
-import 'package:tangent_sdk/src/core/model/purchase.dart';
-import 'package:tangent_sdk/src/core/enum/puchase_result_enum.dart';
+
 import '../types/result.dart';
 
 @immutable
@@ -14,10 +13,9 @@ abstract class PurchasesService {
 
   Future<Result<List<Product>>> getProducts(List<String> productIds);
 
-  Future<Result<PurchaseResult>> purchaseProductById(String productId);
+  Future<Result<Product>> purchaseProductById(String productId);
 
-  Future<Result<PurchaseResult>> purchaseProduct(dynamic product);
-
+  Future<Result<CustomerPurchasesInfo>> purchaseProduct(Product product);
 
   Future<Result<CustomerPurchasesInfo>> restorePurchases();
 

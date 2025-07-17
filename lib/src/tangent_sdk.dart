@@ -1,6 +1,4 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
-import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
@@ -98,13 +96,19 @@ class TangentSDK {
         throw ServiceNotInitializedException('AdjustAnalyticsService');
       }
 
-      if (_config.adjustSubscriptionToken != null &&
+      if (_config.automaticTrackSubscription &&
+          _config.adjustSubscriptionToken != null &&
           _config.adjustSubscriptionRenewalToken != null &&
           _config.adjustSubscriptionToken!.isNotEmpty &&
           _config.adjustSubscriptionRenewalToken!.isNotEmpty) {
-        AppLogger.info('Adjust Subscription Events Tracking Service initialized', tag: 'Adjust-Subscription');
+        AppLogger.info('Automatic Tracking Purchase Events is ON', tag: 'Adjust-Subscription');
+      } else if (!_config.automaticTrackSubscription) {
+        AppLogger.info('Automatic Tracking Purchase automatic tracking is disabled is OFF', tag: 'Adjust-Subscription');
       } else {
-        throw ValidationException('adjustSubscriptionToken & adjustSubscriptionRenewalToken', 'Cannot be empty');
+        throw ValidationException(
+          'adjustSubscriptionToken & adjustSubscriptionRenewalToken',
+          'Cannot be empty or set automaticTrackSubscription to False',
+        );
       }
     }
 
@@ -173,14 +177,18 @@ class TangentSDK {
     required String subscriptionId,
     required String? eventName,
   }) async {
-    for (final analytics in _analyticsServices) {
-      await analytics.logSubscriptionEvent(
-        eventToken: eventToken,
-        price: price,
-        currency: currency,
-        subscriptionId: subscriptionId,
-        eventName: eventName,
-      );
+    if (_config.automaticTrackSubscription) {
+      for (final analytics in _analyticsServices) {
+        await analytics.logSubscriptionEvent(
+          eventToken: eventToken,
+          price: price,
+          currency: currency,
+          subscriptionId: subscriptionId,
+          eventName: eventName,
+        );
+      }
+    } else {
+      AppLogger.info('Automatic Tracking Purchase Events is OFF', tag: 'Adjust-Subscription');
     }
   }
 
@@ -189,39 +197,109 @@ class TangentSDK {
     return await _revenueService?.getProducts(productIds) ?? const Success([]);
   }
 
-  Future<Result<PurchaseResult>> purchaseProductById(String productId) async {
-    final purchaseResult =
-        await _revenueService?.purchaseProductById(productId) ?? const Success(PurchaseResult.invalid);
-    if (_config.adjustSubscriptionToken == null ||
-        _config.adjustSubscriptionToken!.isEmpty ||
-        _config.adjustSubscriptionRenewalToken == null ||
-        _config.adjustSubscriptionRenewalToken!.isEmpty) {
-      return purchaseResult;
-    }
-    return purchaseResult;
+  Future<Result<Product>> purchaseProductById(String productId, {String? eventToken, String? eventName}) async {
+    // Check if this is a renewal before making the purchase
+    final isRenewal = await _checkIsRenewal(productId);
+    final productResult = await _revenueService?.purchaseProductById(productId);
 
-    // purchaseResult.when(
-    //   success: (result) {
-    //     if (purchaseResult == PurchaseResult.success) {
-    //       try {
-    //         trackSubscription(
-    //           eventToken: _config.adjustSubscriptionToken!,
-    //           price: price,
-    //           currency: currency,
-    //           subscriptionId: subscriptionId,
-    //           eventName: "did_purchase",
-    //         );
-    //       } catch (err) {}
-    //     }
-    //   },
-    //   failure: (err) {
-    //     return purchaseResult;
-    //   },
-    // );
+    if (productResult == null) {
+      throw ServiceNotInitializedException('Purchases Service');
+    }
+
+    return productResult.when(
+      success: (product) {
+        _silentTrackSubscriptionEvent(
+          product: product,
+          isRenewalEvent: isRenewal,
+          eventName: eventName,
+          eventToken: eventToken,
+        );
+        return Success(product);
+      },
+      failure: (failure) {
+        if (failure is PurchaseException) {
+          trackFailureEvent(
+            eventName: 'error_while_making_purchase',
+            failureReason: failure.code ?? PurchaseFailureCode.unknown.name,
+            properties: {
+              'original_error': failure.originalError,
+              'product_id': productId,
+              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
+            },
+          );
+        } else {
+          trackFailureEvent(
+            eventName: 'error_while_making_purchase',
+            failureReason: failure.message,
+            properties: {
+              'original_error': failure.originalError,
+              'product_id': productId,
+              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
+            },
+          );
+        }
+        return Future.value(Failure(failure));
+      },
+    );
   }
 
-  Future<Result<PurchaseResult>> purchaseProduct(dynamic product) async {
-    return await _revenueService?.purchaseProduct(product) ?? const Success(PurchaseResult.invalid);
+  ///Make a purchase
+  ///Returns a [Result] of [CustomerPurchasesInfo]
+  ///Automatically tracks subscription events
+  ///Automatically tracks failure events
+  Future<Result<CustomerPurchasesInfo>> purchaseProduct(
+    Product product, {
+    String? eventToken,
+    String? eventName,
+  }) async {
+    // Check if this is a renewal before making the purchase
+    final isRenewal = await _checkIsRenewal(product.id);
+    final productResult = await _revenueService?.purchaseProduct(product);
+
+    if (productResult == null) {
+      throw ServiceNotInitializedException('Purchases Service');
+    }
+    return productResult.when(
+      success: (customerPurchasesInfo) {
+        _silentTrackSubscriptionEvent(
+          product: product,
+          isRenewalEvent: isRenewal,
+          eventToken: eventToken,
+          eventName: eventName,
+        );
+        return Success(customerPurchasesInfo);
+      },
+      failure: (failure) {
+        if (failure is PurchaseException) {
+          trackFailureEvent(
+            eventName: 'error_while_making_purchase',
+            failureReason: failure.code ?? PurchaseFailureCode.unknown.name,
+            properties: {
+              'original_error': failure.originalError,
+              'product_id': product.id,
+              'product_title': product.title,
+              'product_price': product.priceString,
+              'product_currency_code': product.currencyCode,
+              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
+            },
+          );
+        } else {
+          trackFailureEvent(
+            eventName: 'error_while_making_purchase',
+            failureReason: failure.message,
+            properties: {
+              'original_error': failure.originalError,
+              'product_id': product.id,
+              'product_title': product.title,
+              'product_price': product.priceString,
+              'product_currency_code': product.currencyCode,
+              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
+            },
+          );
+        }
+        return Future.value(Failure(failure));
+      },
+    );
   }
 
   Future<Result<bool>> checkActiveSubscription() async {
@@ -247,6 +325,51 @@ class TangentSDK {
 
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
       _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
+
+  Future<bool> _checkIsRenewal(String productId) async {
+    try {
+      final customerInfo = await _revenueService?.getCustomerPurchasesInfo();
+      if (customerInfo == null) return false;
+
+      return customerInfo.when(
+        success: (info) {
+          // Check if user has previously purchased this product
+          final existingPurchase = info.purchases.firstWhere(
+            (purchase) => purchase.productId == productId,
+            orElse: () => CustomerPurchaseInfo(productId: '', isActive: false, isSandbox: false, willRenew: false),
+          );
+
+          // It's a renewal if:
+          // 1. The product exists in purchase history
+          // 2. Has an original purchase date (was purchased before)
+          return existingPurchase.productId.isNotEmpty && existingPurchase.originalPurchaseDate != null;
+        },
+        failure: (_) => false,
+      );
+    } catch (err) {
+      return false;
+    }
+  }
+
+  Future<void> _silentTrackSubscriptionEvent({
+    required Product product,
+    bool isRenewalEvent = false,
+    String? eventToken,
+    String? eventName,
+  }) async {
+    try {
+      await trackSubscription(
+        eventToken:
+            eventToken ?? (isRenewalEvent ? _config.adjustSubscriptionRenewalToken! : _config.adjustSubscriptionToken!),
+        price: product.price,
+        currency: product.currencyCode,
+        subscriptionId: product.id,
+        eventName: eventName ?? (isRenewalEvent ? "did_renew_subscription" : "did_subscribe"),
+      );
+    } catch (err) {
+      AppLogger.error(err.toString());
+    }
+  }
 
   // App Tracking Transparency Methods
   Future<void> requestTrackingAuthorization() async {

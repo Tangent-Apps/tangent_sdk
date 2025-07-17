@@ -20,8 +20,20 @@ class CustomerPurchasesInfo {
     this.latestExpirationDate,
     this.purchases = const [],
     required this.originalAppUserId,
-  });}
+  });
 
+  @override
+  String toString() {
+    final purchasesStr = purchases.isEmpty ? '[]' : '[\n    ${purchases.map((p) => p.toString()).join(',\n    ')}\n  ]';
+    return 'CustomerPurchasesInfo(\n'
+        '  hasActiveSubscription: $hasActiveSubscription,\n'
+        '  originalPurchaseDate: $originalPurchaseDate,\n'
+        '  latestExpirationDate: $latestExpirationDate,\n'
+        '  purchases: $purchasesStr,\n'
+        '  originalAppUserId: $originalAppUserId\n'
+        ')';
+  }
+}
 
 /// Detailed info about a single purchase or entitlement
 class CustomerPurchaseInfo {
@@ -46,13 +58,21 @@ class CustomerPurchaseInfo {
   /// True if a subscription is set to auto-renew
   final bool willRenew;
 
+  final String? entitlementId;
+
   CustomerPurchaseInfo({
     required this.productId,
     this.originalPurchaseDate,
     this.latestPurchaseDate,
     this.expirationDate,
+    this.entitlementId,
     required this.isActive,
     required this.isSandbox,
     required this.willRenew,
   });
+
+  @override
+  String toString() {
+    return 'CustomerPurchaseInfo(productId: $productId, originalPurchaseDate: $originalPurchaseDate, latestPurchaseDate: $latestPurchaseDate, expirationDate: $expirationDate, isActive: $isActive, isSandbox: $isSandbox, willRenew: $willRenew)';
+  }
 }
