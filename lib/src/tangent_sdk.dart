@@ -9,10 +9,11 @@ class TangentSDK {
   final TangentConfig _config;
   CrashReportingService? _crashReporting;
   AppCheckService? _appCheck;
-  List<AnalyticsService> _analyticsServices = [];
+  final List<AnalyticsService> _analyticsServices = [];
   PurchasesService? _revenueService;
   AppTrackingTransparencyService? _appTrackingTransparency;
   AppReviewService? _appReview;
+  bool _disposed = false;
 
   TangentSDK._(this._config);
 
@@ -23,12 +24,12 @@ class TangentSDK {
     return _instance!;
   }
 
-  ///Initialize the SDK with the provided configuration and optional Firebase options.
+  /// Initialize the SDK with the provided configuration and optional Firebase options.
   ///
-  ///This method should be called before using any other SDK features.
+  /// This method should be called before using any other SDK features.
   ///
-  ///[config] The configuration object containing the SDK settings.
-  ///[firebaseOptions] Optional Firebase options for initializing Firebase.
+  /// [config] The configuration object containing the SDK settings.
+  /// [firebaseOptions] Optional Firebase options for initializing Firebase.
 
   static Future<TangentSDK> initialize({
     required TangentConfig config,
@@ -53,12 +54,12 @@ class TangentSDK {
     return _instance!;
   }
 
-  ///Initialize the SDK services.
+  /// Initialize the SDK services.
   ///
-  ///This method should be called after initializing the SDK.
+  /// This method should be called after initializing the SDK.
   ///
-  ///[config] The configuration object containing the SDK settings.
-  ///[firebaseOptions] Optional Firebase options for initializing Firebase.
+  /// [config] The configuration object containing the SDK settings.
+  /// [firebaseOptions] Optional Firebase options for initializing Firebase.
   Future<void> _initializeServices() async {
     // Initialize crash reporting
     if (_config.enableCrashlytics) {
@@ -132,6 +133,7 @@ class TangentSDK {
     AppLogger.info('App Review Service initialized', tag: 'Review');
   }
 
+  /// Record an error to the crash reporting service.
   Future<void> recordError(
     dynamic exception,
     StackTrace? stackTrace, {
@@ -141,10 +143,8 @@ class TangentSDK {
     await _crashReporting?.recordError(exception, stackTrace, fatal: fatal, customKeys: customKeys);
   }
 
-  ///Log a message to the crash reporting service
-  Future<void> log(String message) async {
-    await _crashReporting?.log(message);
-  }
+  /// Log a message to the crash reporting service
+  Future<void> log(String message) async => _crashReporting?.log(message);
 
   // Analytics Methods
   /// Track events with specific properties (specifically for Mixpanel)
@@ -197,13 +197,17 @@ class TangentSDK {
     return await _revenueService?.getProducts(productIds) ?? const Success([]);
   }
 
+  /// Purchase a product by id
+  /// Returns a [Result] of [CustomerPurchasesInfo]
+  /// Automatically tracks subscription events
+  /// Automatically tracks failure events
   Future<Result<Product>> purchaseProductById(String productId, {String? eventToken, String? eventName}) async {
     // Check if this is a renewal before making the purchase
     final isRenewal = await _checkIsRenewal(productId);
     final productResult = await _revenueService?.purchaseProductById(productId);
 
     if (productResult == null) {
-      throw ServiceNotInitializedException('Purchases Service');
+      throw ServiceNotInitializedException('PurchasesService');
     }
 
     return productResult.when(
@@ -243,10 +247,10 @@ class TangentSDK {
     );
   }
 
-  ///Make a purchase
-  ///Returns a [Result] of [CustomerPurchasesInfo]
-  ///Automatically tracks subscription events
-  ///Automatically tracks failure events
+  /// Make a purchase
+  /// Returns a [Result] of [CustomerPurchasesInfo]
+  /// Automatically tracks subscription events
+  /// Automatically tracks failure events
   Future<Result<CustomerPurchasesInfo>> purchaseProduct(
     Product product, {
     String? eventToken,
@@ -257,7 +261,7 @@ class TangentSDK {
     final productResult = await _revenueService?.purchaseProduct(product);
 
     if (productResult == null) {
-      throw ServiceNotInitializedException('Purchases Service');
+      throw ServiceNotInitializedException('PurchasesService');
     }
     return productResult.when(
       success: (customerPurchasesInfo) {
@@ -326,6 +330,12 @@ class TangentSDK {
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
       _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
 
+  /// Determines if the given `productId` is a renewal purchase based on the
+  /// existing purchase history.
+  ///
+  /// Returns `true` when:
+  /// * The customer has already purchased the product, **and**
+  /// * The existing purchase contains an `originalPurchaseDate` (i.e. not a trial).
   Future<bool> _checkIsRenewal(String productId) async {
     try {
       final customerInfo = await _revenueService?.getCustomerPurchasesInfo();
@@ -351,6 +361,10 @@ class TangentSDK {
     }
   }
 
+  /// Fire-and-forget wrapper around [trackSubscription].
+  ///
+  /// The method purposely swallows any thrown error and logs it, so that failures
+  /// in Adjust/Mixpanel tracking never interfere with the purchase flow.
   Future<void> _silentTrackSubscriptionEvent({
     required Product product,
     bool isRenewalEvent = false,
