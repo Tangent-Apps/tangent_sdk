@@ -13,7 +13,8 @@ class AdjustAnalyticsService implements AnalyticsService {
 
   @override
   Future<Result<void>> initialize() async {
-    final adjustEnvironment = environment == TangentEnvironment.production ? AdjustEnvironment.production : AdjustEnvironment.sandbox;
+    final adjustEnvironment =
+        environment == TangentEnvironment.production ? AdjustEnvironment.production : AdjustEnvironment.sandbox;
 
     final config = AdjustConfig(appToken, adjustEnvironment);
 
@@ -65,7 +66,7 @@ class AdjustAnalyticsService implements AnalyticsService {
     event.addCallbackParameter('currency', currency);
     event.addCallbackParameter('price', price.toString());
     event.addCallbackParameter('eventName', eventName ?? "successful_purchase");
-    event.addCallbackParameter('tangent_sdk_version', '0.0.3');
+    event.addCallbackParameter('tangent_sdk_version', '0.0.4');
 
     // Add campaign tracking parameters
     await _addCampaignParameters(event);
@@ -89,7 +90,11 @@ class AdjustAnalyticsService implements AnalyticsService {
   }
 
   @override
-  Future<Result<void>> logFailureEvent({required String eventName, required String failureReason, Map<String, Object>? properties}) {
+  Future<Result<void>> logFailureEvent({
+    required String eventName,
+    required String failureReason,
+    Map<String, Object>? properties,
+  }) {
     return resultOfAsync(() async {});
   }
 }

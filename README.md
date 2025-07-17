@@ -20,7 +20,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  tangent_sdk: ^0.0.3
+  tangent_sdk: ^0.0.4
 ```
 
 Then run:
