@@ -13,7 +13,6 @@ class TangentSDK {
   PurchasesService? _revenueService;
   AppTrackingTransparencyService? _appTrackingTransparency;
   AppReviewService? _appReview;
-  bool _disposed = false;
 
   TangentSDK._(this._config);
 
@@ -220,9 +219,9 @@ class TangentSDK {
         );
         return Success(product);
       },
-      failure: (failure) {
+      failure: (failure) async {
         if (failure is PurchaseException) {
-          trackFailureEvent(
+          await trackFailureEvent(
             eventName: 'error_while_making_purchase',
             failureReason: failure.code ?? PurchaseFailureCode.unknown.name,
             properties: {
@@ -232,7 +231,7 @@ class TangentSDK {
             },
           );
         } else {
-          trackFailureEvent(
+          await trackFailureEvent(
             eventName: 'error_while_making_purchase',
             failureReason: failure.message,
             properties: {
