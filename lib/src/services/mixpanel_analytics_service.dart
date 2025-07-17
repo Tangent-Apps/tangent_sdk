@@ -39,7 +39,7 @@ class MixpanelAnalyticsService implements AnalyticsService {
 
   Future<Result<void>> _sendEventToServer({required String eventName, Map<String, Object>? properties}) async {
     return resultOfAsync(() async {
-      await _mixpanel!.track(eventName, properties: properties);
+      await _mixpanel!.track(eventName, properties: properties !=null ? {...properties,'tangent_sdk_version': '0.0.3'}: {'tangent_sdk_version': '0.0.3'});
       debugPrint('Successfully sent event to mixPanel: $eventName');
     });
   }
@@ -62,7 +62,6 @@ class MixpanelAnalyticsService implements AnalyticsService {
         'price': price,
         'currency': currency,
         'subscription_id': subscriptionId,
-        'tangent_sdk_version': '0.0.1',
       },
     );
   }

@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:tangent_sdk/tangent_sdk.dart';
 
 @immutable
 abstract class TangentSDKException implements Exception {
@@ -23,7 +24,8 @@ abstract class TangentSDKException implements Exception {
 
 @immutable
 class ServiceNotInitializedException extends TangentSDKException {
-  const ServiceNotInitializedException(String serviceName) : super('$serviceName is not initialized. Call initialize() first.');
+  const ServiceNotInitializedException(String serviceName)
+    : super('$serviceName is not initialized. Call initialize() first.');
 }
 
 @immutable
@@ -44,12 +46,14 @@ class ConfigurationException extends TangentSDKException {
 
 @immutable
 class NetworkException extends TangentSDKException {
-  const NetworkException(String message, {String? code, dynamic originalError}) : super(message, code: code, originalError: originalError);
+  const NetworkException(String message, {String? code, dynamic originalError})
+    : super(message, code: code, originalError: originalError);
 }
 
 @immutable
 class PlatformException extends TangentSDKException {
-  const PlatformException(String message, {String? code, dynamic originalError}) : super(message, code: code, originalError: originalError);
+  const PlatformException(String message, {String? code, dynamic originalError})
+    : super(message, code: code, originalError: originalError);
 }
 
 @immutable
@@ -65,8 +69,14 @@ class AnalyticsException extends TangentSDKException {
 
 @immutable
 class PurchaseException extends TangentSDKException {
-  const PurchaseException(String operation, {String? code, dynamic originalError})
-    : super('Purchase operation failed: $operation', code: code, originalError: originalError);
+  PurchaseException(String operation, {required PurchaseFailureCode code, dynamic originalError})
+    : super('Purchase operation failed: $operation', code: code.name, originalError: originalError);
+}
+
+@immutable
+class PurchaseMethodException extends TangentSDKException {
+  const PurchaseMethodException(String operation, {dynamic originalError})
+    : super('Purchase operation failed: $operation', originalError: originalError);
 }
 
 @immutable

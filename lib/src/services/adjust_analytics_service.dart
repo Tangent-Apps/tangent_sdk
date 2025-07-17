@@ -65,7 +65,7 @@ class AdjustAnalyticsService implements AnalyticsService {
     event.addCallbackParameter('currency', currency);
     event.addCallbackParameter('price', price.toString());
     event.addCallbackParameter('eventName', eventName ?? "successful_purchase");
-    event.addCallbackParameter('tangent_sdk_version', '0.0.1');
+    event.addCallbackParameter('tangent_sdk_version', '0.0.3');
 
     // Add campaign tracking parameters
     await _addCampaignParameters(event);

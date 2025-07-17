@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+
 import '../exceptions/tangent_sdk_exception.dart';
 import '../types/result.dart';
 
@@ -98,7 +99,9 @@ class ErrorHandler {
     } catch (e) {
       final mappedError =
           errorMapper?.call(e) ??
-          (e is TimeoutException ? TimeoutException(operationName, timeout: timeout) : ServiceOperationException(operationName, e));
+          (e is TimeoutException
+              ? TimeoutException(operationName, timeout: timeout)
+              : ServiceOperationException(operationName, e));
       onError?.call(mappedError);
       return Failure(mappedError);
     }
@@ -112,10 +115,6 @@ class ErrorHandler {
       return AuthenticationException('Firebase authentication error during $operation');
     }
     return FirebaseException('Firebase', operation, originalError: error);
-  }
-
-  static TangentSDKException mapPurchaseError(dynamic error, String operation) {
-    return PurchaseException(operation, originalError: error);
   }
 
   static TangentSDKException mapAnalyticsError(String provider, dynamic error, String operation) {
