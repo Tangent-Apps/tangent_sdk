@@ -58,6 +58,7 @@ class CustomerPurchaseInfo {
   /// True if a subscription is set to auto-renew
   final bool willRenew;
 
+  /// The identifier for this entitlement
   final String? entitlementId;
 
   CustomerPurchaseInfo({

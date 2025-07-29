@@ -12,10 +12,10 @@ dependencies:
     sdk: flutter
   
   # Firebase
-  firebase_core: ^3.14.0
-  firebase_crashlytics: ^4.3.7
-  firebase_app_check: ^0.3.2+7
-  
+  firebase_core: ^4.0.0
+  firebase_crashlytics: ^5.0.0
+  firebase_app_check: ^0.4.0
+
   # Analytics
   mixpanel_flutter: ^2.4.0
   adjust_sdk: ^5.4.0
