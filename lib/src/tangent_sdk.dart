@@ -150,7 +150,10 @@ class TangentSDK {
   Future<void> trackEvent(String event, {Map<String, Object>? properties}) async {
     for (final analytics in _analyticsServices) {
       if (analytics is MixpanelAnalyticsService) {
-        await analytics.logEvent(event, properties: properties);
+        final result = await analytics.logEvent(event, properties: properties);
+        if (result.isFailure) {
+          AppLogger.error('Failed to send event to Mixpanel: ${result.error}', tag: 'Analytics');
+        }
       }
     }
   }
@@ -163,7 +166,14 @@ class TangentSDK {
   }) async {
     for (final analytics in _analyticsServices) {
       if (analytics is MixpanelAnalyticsService) {
-        await analytics.logFailureEvent(eventName: eventName, failureReason: failureReason, properties: properties);
+        final result = await analytics.logFailureEvent(
+          eventName: eventName, 
+          failureReason: failureReason, 
+          properties: properties,
+        );
+        if (result.isFailure) {
+          AppLogger.error('Failed to send failure event to Mixpanel: ${result.error}', tag: 'Analytics');
+        }
       }
     }
   }
@@ -209,41 +219,22 @@ class TangentSDK {
       throw ServiceNotInitializedException('PurchasesService');
     }
 
-    return productResult.when(
-      success: (product) {
-        _silentTrackSubscriptionEvent(
-          product: product,
-          isRenewalEvent: isRenewal,
-          eventName: eventName,
-          eventToken: eventToken,
-        );
-        return Success(product);
-      },
-      failure: (failure) async {
-        if (failure is PurchaseException) {
-          await trackFailureEvent(
-            eventName: 'error_while_making_purchase',
-            failureReason: failure.code ?? PurchaseFailureCode.unknown.name,
-            properties: {
-              'original_error': failure.originalError,
-              'product_id': productId,
-              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
-            },
-          );
-        } else {
-          await trackFailureEvent(
-            eventName: 'error_while_making_purchase',
-            failureReason: failure.message,
-            properties: {
-              'original_error': failure.originalError,
-              'product_id': productId,
-              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
-            },
-          );
-        }
-        return Future.value(Failure(failure));
-      },
-    );
+    if (productResult.isSuccess) {
+      final product = productResult.data;
+      _silentTrackSubscriptionEvent(
+        product: product,
+        isRenewalEvent: isRenewal,
+        eventName: eventName,
+        eventToken: eventToken,
+      );
+      return Success(product);
+    } else {
+      await _trackPurchaseFailureEvent(
+        failure: productResult.error,
+        productId: productId,
+      );
+      return Failure(productResult.error);
+    }
   }
 
   /// Make a purchase
@@ -262,47 +253,26 @@ class TangentSDK {
     if (productResult == null) {
       throw ServiceNotInitializedException('PurchasesService');
     }
-    return productResult.when(
-      success: (customerPurchasesInfo) {
-        _silentTrackSubscriptionEvent(
-          product: product,
-          isRenewalEvent: isRenewal,
-          eventToken: eventToken,
-          eventName: eventName,
-        );
-        return Success(customerPurchasesInfo);
-      },
-      failure: (failure) {
-        if (failure is PurchaseException) {
-          trackFailureEvent(
-            eventName: 'error_while_making_purchase',
-            failureReason: failure.code ?? PurchaseFailureCode.unknown.name,
-            properties: {
-              'original_error': failure.originalError,
-              'product_id': product.id,
-              'product_title': product.title,
-              'product_price': product.priceString,
-              'product_currency_code': product.currencyCode,
-              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
-            },
-          );
-        } else {
-          trackFailureEvent(
-            eventName: 'error_while_making_purchase',
-            failureReason: failure.message,
-            properties: {
-              'original_error': failure.originalError,
-              'product_id': product.id,
-              'product_title': product.title,
-              'product_price': product.priceString,
-              'product_currency_code': product.currencyCode,
-              'purchase_error_code': failure.code ?? PurchaseFailureCode.unknown.name,
-            },
-          );
-        }
-        return Future.value(Failure(failure));
-      },
-    );
+    
+    if (productResult.isSuccess) {
+      final customerPurchasesInfo = productResult.data;
+      _silentTrackSubscriptionEvent(
+        product: product,
+        isRenewalEvent: isRenewal,
+        eventToken: eventToken,
+        eventName: eventName,
+      );
+      return Success(customerPurchasesInfo);
+    } else {
+      await _trackPurchaseFailureEvent(
+        failure: productResult.error,
+        productId: product.id,
+        productTitle: product.title,
+        productPrice: product.priceString,
+        productCurrencyCode: product.currencyCode,
+      );
+      return Failure(productResult.error);
+    }
   }
 
   Future<Result<bool>> checkActiveSubscription() async {
@@ -377,11 +347,54 @@ class TangentSDK {
         price: product.price,
         currency: product.currencyCode,
         subscriptionId: product.id,
-        eventName: eventName ?? (isRenewalEvent ? "did_renew_subscription" : "did_subscribe"),
+        eventName: eventName ?? (isRenewalEvent ? "subscription_renewed" : "subscribe"),
       );
     } catch (err) {
       AppLogger.error(err.toString());
     }
+  }
+
+  /// Private method to track purchase failure events based on failure code
+  Future<void> _trackPurchaseFailureEvent({
+    required TangentSDKException failure,
+    required String productId,
+    String? productTitle,
+    String? productPrice,
+    String? productCurrencyCode,
+  }) async {
+    final String failureReason;
+    final String errorCode;
+    final String eventName;
+
+    if (failure is PurchaseException) {
+      failureReason = failure.code ?? PurchaseFailureCode.unknown.name;
+      errorCode = failure.code ?? PurchaseFailureCode.unknown.name;
+
+      // Check if user cancelled the purchase
+      if (failure.code == PurchaseFailureCode.userCancelled.name) {
+        eventName = 'purchase_cancelled';
+      } else if (failure.code == PurchaseFailureCode.network.name) {
+        eventName = 'purchase_failed';
+      } else {
+        eventName = 'error_while_making_purchase';
+      }
+    } else {
+      failureReason = failure.message;
+      errorCode = failure.code ?? PurchaseFailureCode.unknown.name;
+      eventName = 'error_while_making_purchase';
+    }
+
+    final properties = <String, Object>{
+      'original_error': failure.originalError.toString(),
+      'product_id': productId,
+      'purchase_error_code': errorCode,
+    };
+
+    if (productTitle != null) properties['product_title'] = productTitle;
+    if (productPrice != null) properties['product_price'] = productPrice;
+    if (productCurrencyCode != null) properties['product_currency_code'] = productCurrencyCode;
+
+    await trackFailureEvent(eventName: eventName, failureReason: failureReason, properties: properties);
   }
 
   // App Tracking Transparency Methods
