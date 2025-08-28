@@ -27,6 +27,7 @@ class CustomerPurchaseInfoHelper {
           customerInfo.latestExpirationDate != null ? DateTime.tryParse(customerInfo.latestExpirationDate!) : null,
       purchases: subs,
       originalAppUserId: customerInfo.originalAppUserId,
+      managementURL: customerInfo.managementURL,
     );
   }
 }

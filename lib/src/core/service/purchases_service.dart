@@ -29,5 +29,7 @@ abstract class PurchasesService {
 
   Future<Result<CustomerPurchasesInfo>> getCustomerPurchasesInfo();
 
+  Future<Result<String?>> getManagementUrl();
+
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream;
 }

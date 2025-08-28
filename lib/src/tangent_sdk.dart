@@ -315,7 +315,7 @@ class TangentSDK {
 
   Future<Result<CustomerPurchasesInfo>> restorePurchases() async {
     return await _revenueService?.restorePurchases() ??
-        Success(CustomerPurchasesInfo(hasActiveSubscription: false, originalAppUserId: '', purchases: []));
+        Success(CustomerPurchasesInfo(hasActiveSubscription: false, originalAppUserId: '', purchases: [], managementURL: null));
   }
 
   Future<Result<List<Product>>> getOffering(String offeringId) async {
@@ -328,6 +328,10 @@ class TangentSDK {
 
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
       _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
+
+  Future<Result<String?>> getManagementUrl() async {
+    return await _revenueService?.getManagementUrl() ?? const Success(null);
+  }
 
   /// Determines if the given `productId` is a renewal purchase based on the
   /// existing purchase history.

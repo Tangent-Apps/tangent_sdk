@@ -224,4 +224,12 @@ class RevenueCatService extends PurchasesService {
       },
     ).mapErrorAsync((error) => PurchaseMethodException('getCustomerPurchasesInfo', originalError: error.originalError));
   }
+
+  @override
+  Future<Result<String?>> getManagementUrl() async {
+    return resultOfAsync(() async {
+      final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
+      return customerInfo.managementURL;
+    }).mapErrorAsync((error) => PurchaseMethodException('getManagementUrl', originalError: error.originalError));
+  }
 }
