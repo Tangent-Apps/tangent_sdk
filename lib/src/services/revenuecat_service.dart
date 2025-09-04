@@ -224,4 +224,17 @@ class RevenueCatService extends PurchasesService {
       },
     ).mapErrorAsync((error) => PurchaseMethodException('getCustomerPurchasesInfo', originalError: error.originalError));
   }
+
+  @override
+  Future<Result<void>> logIn(String appUserId) async {
+    if (appUserId.trim().isEmpty) {
+      return Failure(ValidationException('appUserId', 'Cannot be empty'));
+    }
+
+    return resultOfAsync(() async {
+      final LogInResult logInResult = await Purchases.logIn(appUserId);
+      final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(logInResult.customerInfo);
+      _customerPurchasesInfoController.add(customerPurchasesInfo);
+    }).mapErrorAsync((error) => PurchaseMethodException('logIn', originalError: error.originalError));
+  }
 }

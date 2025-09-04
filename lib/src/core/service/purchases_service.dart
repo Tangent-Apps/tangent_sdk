@@ -29,5 +29,7 @@ abstract class PurchasesService {
 
   Future<Result<CustomerPurchasesInfo>> getCustomerPurchasesInfo();
 
+  Future<Result<void>> logIn(String appUserId);
+
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream;
 }

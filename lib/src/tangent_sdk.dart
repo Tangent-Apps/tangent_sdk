@@ -288,6 +288,10 @@ class TangentSDK {
         Success(CustomerPurchasesInfo(hasActiveSubscription: false, originalAppUserId: '', purchases: []));
   }
 
+  Future<Result<void>> logIn(String appUserId) async {
+    return await _revenueService?.logIn(appUserId) ?? Failure(ServiceNotInitializedException('PurchasesService'));
+  }
+
   Future<Result<List<Product>>> getOffering(String offeringId) async {
     return await _revenueService?.getOffering(offeringId) ?? const Success([]);
   }
