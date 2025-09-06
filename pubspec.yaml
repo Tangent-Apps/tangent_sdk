@@ -1,6 +1,6 @@
 name: tangent_sdk
 description: "A comprehensive SDK wrapper for Firebase, Mixpanel, Adjust, and RevenueCat with unified analytics and crash reporting."
-version: 0.0.4
+version: 0.0.5
 homepage:
 
 environment:
