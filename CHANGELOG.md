@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2025-09-08
+
+### Added
+
+- **Superwall Integration**: Complete paywall management system with Superwall SDK
+  - Added `PaywallsService` interface for paywall operations
+  - Implemented `SuperwallService` with RevenueCat purchase controller integration
+  - Added `RCPurchaseController` for seamless RevenueCat-Superwall integration
+  - New configuration options: `enableSuperwall`, `superwallIOSApiKey`, `superwallAndroidApiKey`
+  - Automatic user identification using RevenueCat user ID
+  - Automatic subscription status synchronization between RevenueCat and Superwall
+
+- **New SDK Methods for Paywall Management**:
+  - `registerPlacement()` - Register paywall placements with optional parameters
+  - `identifySuperwallUser()` - Identify users for personalized paywalls
+  - `setSuperwallUserAttributes()` - Set user attributes for targeting
+  - `resetSuperwall()` - Reset Superwall session
+  - `handleSuperwallDeepLink()` - Handle deep links through Superwall
+  - `preloadPaywalls()` - Preload paywalls for better performance
+  - `dismissPaywall()` - Programmatically dismiss paywalls
+  - `setSuperwallSubscriptionStatus()` - Set subscription status with entitlements
+  - `refreshSuperwallSubscriptionStatus()` - Refresh subscription status
+
+### Changed
+
+- Updated package description to include Superwall capabilities
+- Enhanced SDK architecture to support paywall services
+
+### Dependencies
+
+- Added `superwallkit_flutter: ^2.4.2` for paywall management
+
 ## [0.0.7] - 2025-09-04
 
 ### Added

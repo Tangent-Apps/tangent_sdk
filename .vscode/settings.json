@@ -1,0 +1,11 @@
+{
+  "editor.rulers": [
+    120
+  ],
+  "dart.lineLength": 120,
+  "editor.wordWrap": "off",
+  "editor.formatOnSave": true,
+  "cSpell.words": [
+    "Superwall",
+  ]
+}
