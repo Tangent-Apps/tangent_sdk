@@ -14,12 +14,15 @@ class CustomerPurchasesInfo {
   /// The original App User ID (e.g. RevenueCat's appUserId)
   final String originalAppUserId;
 
-  CustomerPurchasesInfo({
+  final String? managementURL;
+
+  const CustomerPurchasesInfo({
     required this.hasActiveSubscription,
     this.originalPurchaseDate,
     this.latestExpirationDate,
     this.purchases = const [],
     required this.originalAppUserId,
+    required this.managementURL,
   });
 
   @override
@@ -31,6 +34,7 @@ class CustomerPurchasesInfo {
         '  latestExpirationDate: $latestExpirationDate,\n'
         '  purchases: $purchasesStr,\n'
         '  originalAppUserId: $originalAppUserId\n'
+        '  managementURL: $managementURL\n'
         ')';
   }
 }

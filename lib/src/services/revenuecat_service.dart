@@ -226,6 +226,14 @@ class RevenueCatService extends PurchasesService {
   }
 
   @override
+  Future<Result<String?>> getManagementUrl() async {
+    return resultOfAsync(() async {
+      final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
+      return customerInfo.managementURL;
+    }).mapErrorAsync((error) => PurchaseMethodException('getManagementUrl', originalError: error.originalError));
+  }
+
+  @override
   Future<Result<void>> logIn(String appUserId) async {
     if (appUserId.trim().isEmpty) {
       return Failure(ValidationException('appUserId', 'Cannot be empty'));

@@ -31,5 +31,7 @@ abstract class PurchasesService {
 
   Future<Result<void>> logIn(String appUserId);
 
+  Future<Result<String?>> getManagementUrl();
+
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream;
 }

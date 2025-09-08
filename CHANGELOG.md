@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Updated
 
+- Added `managementURL`.
+
 - Updated Firebase dependencies to their latest stable versions:
   - `firebase_core: ^4.0.0`
   - `firebase_crashlytics: ^5.0.0`
