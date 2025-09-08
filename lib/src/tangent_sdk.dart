@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
+import 'package:tangent_sdk/src/services/superwall_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
 
 class TangentSDK {
@@ -13,12 +14,13 @@ class TangentSDK {
   PurchasesService? _revenueService;
   AppTrackingTransparencyService? _appTrackingTransparency;
   AppReviewService? _appReview;
+  PaywallsService? _superwallService;
 
   TangentSDK._(this._config);
 
   static TangentSDK get instance {
     if (_instance == null) {
-      throw ServiceNotInitializedException('TangentSDK');
+      throw const ServiceNotInitializedException('TangentSDK');
     }
     return _instance!;
   }
@@ -93,7 +95,7 @@ class TangentSDK {
         _analyticsServices.add(adjust);
         AppLogger.info('Adjust Analytics Service initialized', tag: 'Analytics');
       } else {
-        throw ServiceNotInitializedException('AdjustAnalyticsService');
+        throw const ServiceNotInitializedException('AdjustAnalyticsService');
       }
 
       if (_config.automaticTrackSubscription &&
@@ -105,7 +107,7 @@ class TangentSDK {
       } else if (!_config.automaticTrackSubscription) {
         AppLogger.info('Automatic Tracking Purchase automatic tracking is disabled is OFF', tag: 'Adjust-Subscription');
       } else {
-        throw ValidationException(
+        throw const ValidationException(
           'adjustSubscriptionToken & adjustSubscriptionRenewalToken',
           'Cannot be empty or set automaticTrackSubscription to False',
         );
@@ -118,6 +120,29 @@ class TangentSDK {
       _revenueService = RevenueCatService(_config.revenueCatApiKey!);
       await _revenueService!.initialize();
       AppLogger.info('RevenueCat Service initialized', tag: 'Revenue');
+    }
+
+    // Initialize Superwall service
+    if (_config.enableSuperwall) {
+      if (_config.superwallIOSApiKey != null) {
+        AppLogger.info('Initializing Superwall Service', tag: superwallTag);
+        final info = await _revenueService!.getCustomerPurchasesInfo();
+        final userId = info.data.originalAppUserId;
+        _superwallService = SuperwallService(
+          iOSApiKey: _config.superwallIOSApiKey!,
+          androidApiKey: "",
+          revenueCarUserId: userId,
+        );
+
+        // Initialize Superwall with RevenueCat integration if available
+        final result = await _superwallService!.initialize();
+        result.when(
+          success: (_) => AppLogger.info('Superwall Service initialized', tag: superwallTag),
+          failure: (error) => AppLogger.error('Failed to initialize Superwall', error: error, tag: superwallTag),
+        );
+      } else {
+        AppLogger.error('Superwall enabled but API keys not configured', tag: superwallTag);
+      }
     }
 
     // Initialize app tracking transparency
@@ -167,8 +192,8 @@ class TangentSDK {
     for (final analytics in _analyticsServices) {
       if (analytics is MixpanelAnalyticsService) {
         final result = await analytics.logFailureEvent(
-          eventName: eventName, 
-          failureReason: failureReason, 
+          eventName: eventName,
+          failureReason: failureReason,
           properties: properties,
         );
         if (result.isFailure) {
@@ -216,7 +241,7 @@ class TangentSDK {
     final productResult = await _revenueService?.purchaseProductById(productId);
 
     if (productResult == null) {
-      throw ServiceNotInitializedException('PurchasesService');
+      throw const ServiceNotInitializedException('PurchasesService');
     }
 
     if (productResult.isSuccess) {
@@ -229,10 +254,7 @@ class TangentSDK {
       );
       return Success(product);
     } else {
-      await _trackPurchaseFailureEvent(
-        failure: productResult.error,
-        productId: productId,
-      );
+      await _trackPurchaseFailureEvent(failure: productResult.error, productId: productId);
       return Failure(productResult.error);
     }
   }
@@ -251,9 +273,9 @@ class TangentSDK {
     final productResult = await _revenueService?.purchaseProduct(product);
 
     if (productResult == null) {
-      throw ServiceNotInitializedException('PurchasesService');
+      throw const ServiceNotInitializedException('PurchasesService');
     }
-    
+
     if (productResult.isSuccess) {
       final customerPurchasesInfo = productResult.data;
       _silentTrackSubscriptionEvent(
@@ -285,11 +307,18 @@ class TangentSDK {
 
   Future<Result<CustomerPurchasesInfo>> restorePurchases() async {
     return await _revenueService?.restorePurchases() ??
-        Success(CustomerPurchasesInfo(hasActiveSubscription: false, originalAppUserId: '', purchases: [], managementURL: null));
+        const Success(
+          CustomerPurchasesInfo(
+            hasActiveSubscription: false,
+            originalAppUserId: '',
+            purchases: [],
+            managementURL: null,
+          ),
+        );
   }
 
   Future<Result<void>> logIn(String appUserId) async {
-    return await _revenueService?.logIn(appUserId) ?? Failure(ServiceNotInitializedException('PurchasesService'));
+    return await _revenueService?.logIn(appUserId) ?? const Failure(ServiceNotInitializedException('PurchasesService'));
   }
 
   Future<Result<List<Product>>> getOffering(String offeringId) async {
@@ -429,5 +458,70 @@ class TangentSDK {
 
   Future<void> openStoreListing({String? appStoreId}) async {
     await _appReview?.openStoreListing(appStoreId: appStoreId);
+  }
+
+  /// MARK: Superwall/Paywall Methods
+  /// Register a placement with Superwall
+  Future<Result<void>> registerPlacement(String placement, {Map<String, Object>? params, Function? feature}) async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.registerPlacement(placement, params: params, feature: feature);
+  }
+
+  /// Identify user with Superwall
+  Future<Result<void>> identifySuperwallUser(String userId) async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.identifyUser(userId);
+  }
+
+  /// Set user attributes for Superwall
+  Future<Result<void>> setSuperwallUserAttributes(Map<String, dynamic> attributes) async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.setUserAttributes(attributes);
+  }
+
+  /// Reset Superwall session
+  Future<Result<void>> resetSuperwall() async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.reset();
+  }
+
+  /// Handle deep link with Superwall
+  Future<Result<void>> handleSuperwallDeepLink(Uri url) async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.handleDeepLink(url);
+  }
+
+  /// Dismiss currently presented paywall
+  Future<Result<void>> dismissPaywall() async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.dismissPaywall();
+  }
+
+  /// Set subscription status for Superwall
+  Future<Result<void>> setSuperwallSubscriptionStatus({List<String> activeEntitlementIds = const []}) async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.setSubscriptionStatus(activeEntitlementIds: activeEntitlementIds);
+  }
+
+  /// Refresh subscription status
+  Future<Result<void>> refreshSuperwallSubscriptionStatus() async {
+    if (_superwallService == null) {
+      return const Failure(ServiceNotInitializedException('SuperwallService'));
+    }
+    return await _superwallService!.refreshSubscriptionStatus();
   }
 }

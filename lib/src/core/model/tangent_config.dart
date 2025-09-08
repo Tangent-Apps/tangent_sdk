@@ -14,6 +14,9 @@ class TangentConfig {
   final bool enableAnalytics;
   final bool enableRevenue;
   final bool automaticTrackSubscription;
+  final bool enableSuperwall;
+  final String? superwallIOSApiKey;
+  final String? superwallAndroidApiKey;
 
   const TangentConfig({
     this.mixpanelToken,
@@ -27,5 +30,8 @@ class TangentConfig {
     this.enableAnalytics = true,
     this.enableRevenue = true,
     this.automaticTrackSubscription = true,
+    this.enableSuperwall = true,
+    this.superwallIOSApiKey,
+    this.superwallAndroidApiKey,
   });
 }
