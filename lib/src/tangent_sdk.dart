@@ -135,11 +135,8 @@ class TangentSDK {
         );
 
         // Initialize Superwall with RevenueCat integration if available
-        final result = await _superwallService!.initialize();
-        result.when(
-          success: (_) => AppLogger.info('Superwall Service initialized', tag: superwallTag),
-          failure: (error) => AppLogger.error('Failed to initialize Superwall', error: error, tag: superwallTag),
-        );
+        await _superwallService!.initialize();
+        AppLogger.info('Superwall Service initialized', tag: superwallTag);
       } else {
         AppLogger.error('Superwall enabled but API keys not configured', tag: superwallTag);
       }
