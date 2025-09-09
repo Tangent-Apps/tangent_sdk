@@ -45,6 +45,7 @@ class SuperwallService extends PaywallsService {
           AppLogger.info('Superwall configuration completed', tag: superwallTag);
         },
       );
+      _isInitialized = true;
 
       // 2) Identify with the SAME id as RevenueCat
       await identifyUser(revenueCarUserId);
@@ -56,9 +57,7 @@ class SuperwallService extends PaywallsService {
         AppLogger.info('Superwall subscription status: $status', tag: superwallTag);
       });
 
-      _isInitialized = true;
       AppLogger.info('Superwall initialized successfully', tag: superwallTag);
-
       return const Success(null);
     } catch (e, stackTrace) {
       AppLogger.error('Failed to initialize Superwall', error: e, stackTrace: stackTrace, tag: superwallTag);
