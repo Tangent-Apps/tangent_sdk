@@ -18,6 +18,11 @@ class TangentConfig {
   final String? superwallIOSApiKey;
   final String? superwallAndroidApiKey;
 
+  /// Controls whether App Tracking Transparency (ATT) service is initialized.
+  /// When enabled, the SDK will automatically initialize the ATT service on iOS
+  /// Defaults to `true`.
+  final bool enableAppTrackingTransparency;
+
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
@@ -33,5 +38,6 @@ class TangentConfig {
     this.enableSuperwall = true,
     this.superwallIOSApiKey,
     this.superwallAndroidApiKey,
+    this.enableAppTrackingTransparency = true,
   });
 }

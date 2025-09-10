@@ -7,7 +7,7 @@ import 'package:tangent_sdk/src/core/types/result.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 import 'package:tangent_sdk/src/services/rc_purchase_controller.dart';
 
-const superwallTag = "Superwall";
+const superwallTag = "Superwall💸";
 
 class SuperwallService extends PaywallsService {
   final String iOSApiKey;

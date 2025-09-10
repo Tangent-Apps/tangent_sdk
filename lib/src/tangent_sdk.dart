@@ -143,10 +143,12 @@ class TangentSDK {
     }
 
     // Initialize app tracking transparency
-    AppLogger.info('Initializing App Tracking Transparency Service', tag: 'Tracking');
-    _appTrackingTransparency = AppTrackingTransparencyService();
-    await _appTrackingTransparency!.init();
-    AppLogger.info('App Tracking Transparency Service initialized', tag: 'Tracking');
+    if (_config.enableAppTrackingTransparency) {
+      AppLogger.info('Initializing App Tracking Transparency Service', tag: 'Tracking');
+      _appTrackingTransparency = AppTrackingTransparencyService();
+      await _appTrackingTransparency!.init();
+      AppLogger.info('App Tracking Transparency Service initialized', tag: 'Tracking');
+    }
 
     // Initialize app review service (utility - always available)
     AppLogger.info('Initializing App Review Service', tag: 'Review');
@@ -433,6 +435,7 @@ class TangentSDK {
 
   // App Tracking Transparency Methods
   Future<void> requestTrackingAuthorization() async {
+    _appTrackingTransparency ??= AppTrackingTransparencyService();
     await _appTrackingTransparency?.init();
   }
 
