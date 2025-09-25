@@ -14,7 +14,24 @@ class TangentConfig {
   final bool enableAnalytics;
   final bool enableRevenue;
   final bool automaticTrackSubscription;
-  final bool enableSuperwall;
+
+  /// Controls whether Superwall paywall service is automatically initialized during SDK setup.
+  ///
+  /// When `true` (default): Superwall is initialized automatically when [TangentSDK.initialize] is called.
+  ///
+  /// When `false`: You must manually call [TangentSDK.instance.initSuperwall()] when you want to initialize Superwall.
+  ///
+  /// **Use cases for manual initialization:**
+  /// - Initialize Superwall only after user authentication
+  /// - Delay paywall initialization until specific app states
+  /// - Initialize based on user subscription status or app configuration
+  /// - Performance optimization by deferring non-critical services
+  ///
+  /// **Note:** RevenueCat service must be enabled (`enableRevenue: true`) and configured
+  /// with a valid API key for Superwall to work properly.
+  ///
+  /// Defaults to `true`.
+  final bool enableAutoInitSuperwall;
   final String? superwallIOSApiKey;
   final String? superwallAndroidApiKey;
 
@@ -35,7 +52,7 @@ class TangentConfig {
     this.enableAnalytics = true,
     this.enableRevenue = true,
     this.automaticTrackSubscription = true,
-    this.enableSuperwall = true,
+    this.enableAutoInitSuperwall = true,
     this.superwallIOSApiKey,
     this.superwallAndroidApiKey,
     this.enableAppTrackingTransparency = true,
