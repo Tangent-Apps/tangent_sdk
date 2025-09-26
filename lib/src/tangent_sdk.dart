@@ -253,6 +253,10 @@ class TangentSDK {
     required String subscriptionId,
     required String? eventName,
   }) async {
+    AppLogger.info(
+      'Automatic Tracking Purchase Events is ${_config.automaticTrackSubscription} logSubscriptionEvent',
+      tag: 'Adjust-Subscription',
+    );
     if (_config.automaticTrackSubscription) {
       for (final analytics in _analyticsServices) {
         await analytics.logSubscriptionEvent(

@@ -18,7 +18,7 @@ dependencies:
 
   # Analytics
   mixpanel_flutter: ^2.4.0
-  adjust_sdk: ^5.4.0
+  adjust_sdk: ^5.4.4
 
   # RevenueCat
   purchases_flutter: ^8.10.6
