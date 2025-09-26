@@ -40,6 +40,8 @@ class TangentConfig {
   /// Defaults to `true`.
   final bool enableAppTrackingTransparency;
 
+  final String? adjustConsumableToken;
+
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
@@ -56,5 +58,6 @@ class TangentConfig {
     this.superwallIOSApiKey,
     this.superwallAndroidApiKey,
     this.enableAppTrackingTransparency = true,
+    this.adjustConsumableToken,
   });
 }

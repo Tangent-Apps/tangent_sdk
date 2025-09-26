@@ -13,7 +13,8 @@ class SuperwallService extends PaywallsService {
   final String iOSApiKey;
   final String androidApiKey;
   final String revenueCarUserId;
-  final SuperwallPurchaseCallback superwallPurchaseCallback;
+  final SuperwallPurchaseCallback onSubscriptionPurchaseCompleted;
+  final SuperwallPurchaseCallback onConsumablePurchaseCompleted;
 
   bool _isInitialized = false;
 
@@ -21,7 +22,8 @@ class SuperwallService extends PaywallsService {
     required this.revenueCarUserId,
     required this.iOSApiKey,
     required this.androidApiKey,
-    required this.superwallPurchaseCallback,
+    required this.onSubscriptionPurchaseCompleted,
+    required this.onConsumablePurchaseCompleted,
   });
 
   @override
@@ -44,7 +46,10 @@ class SuperwallService extends PaywallsService {
 
       // 1) Configure
       // Set a callback to be notified when a purchase is completed through Superwall
-      final RCPurchaseController purchaseController = RCPurchaseController(superwallPurchaseCallback);
+      final RCPurchaseController purchaseController = RCPurchaseController(
+        onSubscriptionPurchaseCompleted,
+        onConsumablePurchaseCompleted,
+      );
       Superwall.configure(
         apiKey,
         purchaseController: purchaseController,

@@ -187,7 +187,8 @@ class TangentSDK {
         androidApiKey: "",
         revenueCarUserId: userId,
         // Set up purchase callback to track events to Adjust
-        superwallPurchaseCallback: _handleSuperwallPurchase,
+        onSubscriptionPurchaseCompleted: _onSubscriptionPurchaseCompleted,
+        onConsumablePurchaseCompleted: _onConsumablePurchaseCompleted,
       );
 
       // Initialize Superwall with RevenueCat integration if available
@@ -580,7 +581,7 @@ class TangentSDK {
 
   /// Handle Superwall purchase completion and track to Adjust
   /// This method is called automatically when a purchase is completed through Superwall
-  Future<void> _handleSuperwallPurchase(String productId) async {
+  Future<void> _onSubscriptionPurchaseCompleted(String productId) async {
     final isRenewal = await _checkIsRenewal(productId);
     try {
       AppLogger.info('Handling Superwall purchase: $productId', tag: superwallTag);
@@ -609,15 +610,39 @@ class TangentSDK {
     }
   }
 
-  /// Track Superwall purchases manually (alternative method for direct API usage)
-  /// Call this method when you detect a Superwall transaction completion
-  Future<void> trackSuperwallPurchase({required String productId}) async {
+  /// Handle Superwall Consumable purchase completion and track to Adjust
+  /// This method is called automatically when a purchase is completed through Superwall
+  Future<void> _onConsumablePurchaseCompleted(String productId) async {
     try {
-      AppLogger.info('Manually tracking Superwall purchase: $productId', tag: superwallTag);
+      if (_config.adjustConsumableToken == null) return;
+      AppLogger.info('Handling Superwall Consumable Purchase: $productId', tag: superwallTag);
 
-      await _handleSuperwallPurchase(productId);
+      final result = await _revenueService?.getProducts([productId]) ?? const Success([]);
+      late Product product;
+      result.when(
+        success: (products) async {
+          if (products.isNotEmpty) {
+            product = products.first;
+            return;
+          }
+          AppLogger.error('Product not found for ID: $productId', tag: superwallTag);
+        },
+        failure: (error) {
+          AppLogger.error('Failed to fetch product for ID: $productId, error: $error', tag: superwallTag);
+        },
+      );
+
+      await trackSubscription(
+        eventToken: _config.adjustConsumableToken!,
+        price: product.price,
+        currency: product.currencyCode,
+        subscriptionId: product.id,
+        eventName: "coin_purchase",
+      );
+
+      AppLogger.info('Superwall purchase tracked successfully to Adjust', tag: superwallTag);
     } catch (e) {
-      AppLogger.error('Failed to manually track Superwall purchase', error: e, tag: superwallTag);
+      AppLogger.error('Failed to track Superwall purchase to Adjust', error: e, tag: superwallTag);
     }
   }
 }
