@@ -13,10 +13,18 @@ class SuperwallService extends PaywallsService {
   final String iOSApiKey;
   final String androidApiKey;
   final String revenueCarUserId;
+  final PurchaseCallback onSubscriptionPurchaseCompleted;
+  final PurchaseCallback onConsumablePurchaseCompleted;
 
   bool _isInitialized = false;
 
-  SuperwallService({required this.revenueCarUserId, required this.iOSApiKey, required this.androidApiKey});
+  SuperwallService({
+    required this.revenueCarUserId,
+    required this.iOSApiKey,
+    required this.androidApiKey,
+    required this.onSubscriptionPurchaseCompleted,
+    required this.onConsumablePurchaseCompleted,
+  });
 
   @override
   Future<Result<void>> initialize() async {
@@ -37,7 +45,11 @@ class SuperwallService extends PaywallsService {
       AppLogger.info('Initializing Superwall with ${Platform.isIOS ? 'iOS' : 'Android'} API key', tag: superwallTag);
 
       // 1) Configure
-      final RCPurchaseController purchaseController = RCPurchaseController();
+      // Set a callback to be notified when a purchase is completed through Superwall
+      final RCPurchaseController purchaseController = RCPurchaseController(
+        onSubscriptionPurchaseCompleted,
+        onConsumablePurchaseCompleted,
+      );
       Superwall.configure(
         apiKey,
         purchaseController: purchaseController,
@@ -162,6 +174,7 @@ class SuperwallService extends PaywallsService {
 
       AppLogger.info('Preloading paywalls', tag: superwallTag);
       await Superwall.shared.preloadAllPaywalls();
+      AppLogger.info('Successfully preloaded paywalls', tag: superwallTag);
 
       return const Success(null);
     } catch (e, stackTrace) {
@@ -177,6 +190,7 @@ class SuperwallService extends PaywallsService {
 
       AppLogger.debug('Dismissing paywall', tag: superwallTag);
       await Superwall.shared.dismiss();
+      AppLogger.info('Successfully dismissed paywall', tag: superwallTag);
 
       return const Success(null);
     } catch (e, stackTrace) {

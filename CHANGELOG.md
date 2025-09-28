@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- ...
+
+### Changed
+- ...
+
+### Fixed
+- ...
+
+### Deprecated
+- ...
+
+### Removed
+- ...
+
+### Security
+- ...
+
+## [0.0.11] - 2025-09-29
+
+### Added
+- Success purchases controller/stream in `TangentSDK`:
+  - `successPurchaseStream` to listen for successful purchases across both RevenueCat and Superwall flows.
+  - Deduplication window (1s) to avoid duplicate emissions.
+
+### Changed
+- Renamed `SuperwallPurchaseCallback` to `PurchaseCallback` for consistency and reuse.
+- Emitting successful purchases from RevenueCat purchase methods to the success stream.
+
+## [0.0.9] - 2025-09-25
+
+### Enhanced
+
+- **Improved Logging System**: 
+  - Added comprehensive `AppLogger` integration throughout the SDK
+  - Enhanced `RCPurchaseController` with tagged logging using 💳 emoji for purchase operations
+  - Added detailed logging for purchase flow tracking, error handling with stack traces
+  - Improved error visibility for debugging RevenueCat purchase operations
+
+- **Better Superwall Configuration Control**:
+  - Renamed `autoInitSuperwall` to `enableAutoInitSuperwall` for clearer developer intent
+  - Added comprehensive documentation for `initSuperwall()` method
+  - Enhanced flexibility for automatic vs manual Superwall initialization
+  - Added detailed use cases and examples for different initialization patterns
+
+- **SDK Architecture Improvements**:
+  - Refactored service initialization to use `Future.wait()` for parallel initialization
+  - Separated crash reporting, app check, and ATT initialization into dedicated methods
+  - Improved service startup performance and error isolation
+  - Enhanced method naming consistency across Superwall API methods
+
+### Changed
+
+- **Configuration Property Naming**:
+  - `autoInitSuperwall` → `enableAutoInitSuperwall` with enhanced documentation
+  - Better clarity on when to use automatic vs manual Superwall initialization
+
+- **Method Naming Consistency**:
+  - Prefixed all Superwall methods with `superwall` for better API organization
+  - `registerPlacement()` → `superwallRegisterPlacement()`
+  - `identifySuperwallUser()` → `superwallIdentifySuperwallUser()`
+  - `setSuperwallUserAttributes()` → `superwallSetUserAttributes()`
+  - `resetSuperwall()` → `superwallReset()`
+  - `handleSuperwallDeepLink()` → `superwallHandleDeepLink()`
+  - `setSuperwallSubscriptionStatus()` → `superwallSetSubscriptionStatus()`
+
+### Fixed
+
+- **Purchase Flow Error Handling**:
+  - Enhanced error logging with proper stack traces in `RCPurchaseController`
+  - Added comprehensive error tracking for product not found scenarios
+  - Improved purchase failure detection and reporting
+  - Better error context for Google Play subscription option failures
+
 ## [0.0.8] - 2025-09-08
 
 ### Added

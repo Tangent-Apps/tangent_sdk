@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
@@ -16,13 +18,29 @@ class TangentSDK {
   AppReviewService? _appReview;
   PaywallsService? _superwallService;
 
-  TangentSDK._(this._config);
+  // Stream controller for successful purchases
+  late final StreamController<Product> _successPurchaseController;
+  
+  // Deduplication tracking
+  final Map<String, DateTime> _lastEmissionTimes = {};
+  static const Duration _deduplicationWindow = Duration(milliseconds: 1000); // 1 second window
+
+  TangentSDK._(this._config) {
+    _successPurchaseController = StreamController<Product>.broadcast();
+  }
 
   static TangentSDK get instance {
     if (_instance == null) {
       throw const ServiceNotInitializedException('TangentSDK');
     }
     return _instance!;
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    AppLogger.info('Disposing TangentSDK resources', tag: 'TangentSDK');
+    _successPurchaseController.close();
+    _lastEmissionTimes.clear();
   }
 
   /// Initialize the SDK with the provided configuration and optional Firebase options.
@@ -38,7 +56,8 @@ class TangentSDK {
     bool enableDebugLogging = false,
   }) async {
     if (_instance != null) {
-      return _instance!;
+      _instance!.dispose();
+      _instance = null;
     }
 
     // Configure logging
@@ -62,22 +81,6 @@ class TangentSDK {
   /// [config] The configuration object containing the SDK settings.
   /// [firebaseOptions] Optional Firebase options for initializing Firebase.
   Future<void> _initializeServices() async {
-    // Initialize crash reporting
-    if (_config.enableCrashlytics) {
-      AppLogger.info('Initializing Firebase Crashlytics Service', tag: 'CrashReporting');
-      _crashReporting = const FirebaseCrashReportingService();
-      await _crashReporting!.initialize();
-      AppLogger.info('Firebase Crashlytics Service initialized', tag: 'CrashReporting');
-    }
-
-    // Initialize app check
-    if (_config.enableAppCheck) {
-      AppLogger.info('Initializing Firebase App Check Service', tag: 'AppCheck');
-      _appCheck = const FirebaseAppCheckService();
-      await _appCheck!.activate();
-      AppLogger.info('Firebase App Check Service initialized', tag: 'AppCheck');
-    }
-
     // Initialize analytics services
     if (_config.enableAnalytics) {
       if (_config.mixpanelToken != null) {
@@ -122,38 +125,98 @@ class TangentSDK {
       AppLogger.info('RevenueCat Service initialized', tag: 'Revenue');
     }
 
-    // Initialize Superwall service
-    if (_config.enableSuperwall) {
-      if (_config.superwallIOSApiKey != null) {
-        AppLogger.info('Initializing Superwall Service', tag: superwallTag);
-        final info = await _revenueService!.getCustomerPurchasesInfo();
-        final userId = info.data.originalAppUserId;
-        _superwallService = SuperwallService(
-          iOSApiKey: _config.superwallIOSApiKey!,
-          androidApiKey: "",
-          revenueCarUserId: userId,
-        );
+    await Future.wait([
+      // Initialize Superwall service
+      if (_config.enableAutoInitSuperwall) initSuperwall(),
 
-        // Initialize Superwall with RevenueCat integration if available
-        await _superwallService!.initialize();
-        AppLogger.info('Superwall Service initialized', tag: superwallTag);
-      } else {
-        AppLogger.error('Superwall enabled but API keys not configured', tag: superwallTag);
-      }
-    }
+      // Initialize crash reporting
+      if (_config.enableCrashlytics) _enableCrashlytics(),
 
-    // Initialize app tracking transparency
-    if (_config.enableAppTrackingTransparency) {
-      AppLogger.info('Initializing App Tracking Transparency Service', tag: 'Tracking');
-      _appTrackingTransparency = AppTrackingTransparencyService();
-      await _appTrackingTransparency!.init();
-      AppLogger.info('App Tracking Transparency Service initialized', tag: 'Tracking');
-    }
+      // Initialize app check
+      if (_config.enableAppCheck) _enableAppCheck(),
+
+      // Initialize app tracking transparency
+      if (_config.enableAppTrackingTransparency) requestTrackingAuthorization(),
+    ]);
 
     // Initialize app review service (utility - always available)
     AppLogger.info('Initializing App Review Service', tag: 'Review');
     _appReview = AppReviewService();
     AppLogger.info('App Review Service initialized', tag: 'Review');
+  }
+
+  /// Initialize crash reporting
+  Future<void> _enableCrashlytics() async {
+    AppLogger.info('Initializing Firebase Crashlytics Service', tag: 'CrashReporting');
+    _crashReporting = const FirebaseCrashReportingService();
+    await _crashReporting!.initialize();
+    AppLogger.info('Firebase Crashlytics Service initialized', tag: 'CrashReporting');
+  }
+
+  /// Initialize app check
+  Future<void> _enableAppCheck() async {
+    AppLogger.info('Initializing Firebase App Check Service', tag: 'AppCheck');
+    _appCheck = const FirebaseAppCheckService();
+    await _appCheck!.activate();
+    AppLogger.info('Firebase App Check Service initialized', tag: 'AppCheck');
+  }
+
+  /// Initialize Superwall paywall service for managing subscription paywalls.
+  ///
+  /// This method can be called in two ways:
+  /// 1. **Automatic initialization**: Set `enableAutoInitSuperwall: true` in [TangentConfig]
+  ///    and Superwall will be initialized automatically during SDK initialization.
+  /// 2. **Manual initialization**: Set `enableAutoInitSuperwall: false` in [TangentConfig]
+  ///    and call this method manually when you want to initialize Superwall.
+  ///
+  /// **Requirements:**
+  /// - RevenueCat service must be initialized first (enabled via `enableRevenue: true`)
+  /// - iOS API key must be provided via `superwallIOSApiKey` in [TangentConfig]
+  /// - Android API key is optional (can be empty string)
+  ///
+  /// **Example usage:**
+  /// ```dart
+  /// // Option 1: Automatic initialization (default)
+  /// final config = TangentConfig(
+  ///   superwallIOSApiKey: 'your_ios_key',
+  ///   enableAutoInitSuperwall: true, // Default
+  /// );
+  /// await TangentSDK.initialize(config: config);
+  /// // Superwall is now ready to use
+  ///
+  /// // Option 2: Manual initialization
+  /// final config = TangentConfig(
+  ///   superwallIOSApiKey: 'your_ios_key',
+  ///   enableAutoInitSuperwall: false,
+  /// );
+  /// await TangentSDK.initialize(config: config);
+  /// // Initialize Superwall later when needed
+  /// await TangentSDK.instance.initSuperwall();
+  /// ```
+  ///
+  /// **Note:** This method is safe to call multiple times. If Superwall is already
+  /// initialized, subsequent calls will be ignored.
+  Future<void> initSuperwall() async {
+    if (_config.superwallIOSApiKey != null) {
+      AppLogger.info('Initializing Superwall Service', tag: superwallTag);
+      final info = await _revenueService!.getCustomerPurchasesInfo();
+      final userId = info.data.originalAppUserId;
+      _superwallService ??= SuperwallService(
+        iOSApiKey: _config.superwallIOSApiKey!,
+        androidApiKey: _config.superwallAndroidApiKey ?? "",
+        revenueCarUserId: userId,
+        // Set up purchase callback to track events to Adjust
+        onSubscriptionPurchaseCompleted: _onSubscriptionPurchaseCompleted,
+        onConsumablePurchaseCompleted: _onConsumablePurchaseCompleted,
+      );
+
+      // Initialize Superwall with RevenueCat integration if available
+      await _superwallService!.initialize();
+
+      AppLogger.info('Superwall Service initialized', tag: superwallTag);
+    } else {
+      AppLogger.error('Superwall enabled but API keys not configured', tag: superwallTag);
+    }
   }
 
   /// Record an error to the crash reporting service.
@@ -210,6 +273,10 @@ class TangentSDK {
     required String subscriptionId,
     required String? eventName,
   }) async {
+    AppLogger.info(
+      'Automatic Tracking Purchase Events is ${_config.automaticTrackSubscription} logSubscriptionEvent',
+      tag: 'Adjust-Subscription',
+    );
     if (_config.automaticTrackSubscription) {
       for (final analytics in _analyticsServices) {
         await analytics.logSubscriptionEvent(
@@ -331,6 +398,27 @@ class TangentSDK {
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
       _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
 
+  /// Stream of successful purchases
+  Stream<Product> get successPurchaseStream {
+    return _successPurchaseController.stream;
+  }
+
+  /// Emit product to success stream with deduplication
+  void _emitToSuccessStream(Product product) {
+    final now = DateTime.now();
+    final lastEmissionTime = _lastEmissionTimes[product.id];
+    
+    // Check if we should emit (no previous emission or outside deduplication window)
+    if (lastEmissionTime == null || now.difference(lastEmissionTime) > _deduplicationWindow) {
+      _lastEmissionTimes[product.id] = now;
+      _successPurchaseController.add(product);
+      AppLogger.info('✅ Emitted ${product.id} to success stream', tag: 'PurchaseStream');
+    } else {
+      final timeSinceLastEmission = now.difference(lastEmissionTime);
+      AppLogger.info('🚫 Blocked duplicate emission of ${product.id} (${timeSinceLastEmission.inMilliseconds}ms ago)', tag: 'PurchaseStream');
+    }
+  }
+
   Future<Result<String?>> getManagementUrl() async {
     return await _revenueService?.getManagementUrl() ?? const Success(null);
   }
@@ -433,10 +521,12 @@ class TangentSDK {
     await trackFailureEvent(eventName: eventName, failureReason: failureReason, properties: properties);
   }
 
-  // App Tracking Transparency Methods
+  /// App Tracking Transparency Methods
   Future<void> requestTrackingAuthorization() async {
+    AppLogger.info('Initializing App Tracking Transparency Service', tag: 'Tracking');
     _appTrackingTransparency ??= AppTrackingTransparencyService();
-    await _appTrackingTransparency?.init();
+    await _appTrackingTransparency!.init();
+    AppLogger.info('App Tracking Transparency Service initialized', tag: 'Tracking');
   }
 
   Future<TrackingStatus?> getTrackingStatus() async {
@@ -462,66 +552,171 @@ class TangentSDK {
 
   /// MARK: Superwall/Paywall Methods
   /// Register a placement with Superwall
-  Future<Result<void>> registerPlacement(String placement, {Map<String, Object>? params, Function? feature}) async {
+  Future<Result<void>> superwallRegisterPlacement(
+    String placement, {
+    Map<String, Object>? params,
+    Function? feature,
+  }) async {
+    AppLogger.debug('Registering Superwall placement: $placement', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.registerPlacement(placement, params: params, feature: feature);
+    final result = await _superwallService!.registerPlacement(placement, params: params, feature: feature);
+    result.when(
+      success: (_) => AppLogger.info('Successfully registered placement: $placement', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to register placement: $placement', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Identify user with Superwall
-  Future<Result<void>> identifySuperwallUser(String userId) async {
+  Future<Result<void>> superwallIdentifySuperwallUser(String userId) async {
+    AppLogger.debug('Identifying Superwall user: $userId', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.identifyUser(userId);
+    final result = await _superwallService!.identifyUser(userId);
+    result.when(
+      success: (_) => AppLogger.info('Successfully identified user: $userId', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to identify user: $userId', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Set user attributes for Superwall
-  Future<Result<void>> setSuperwallUserAttributes(Map<String, dynamic> attributes) async {
+  Future<Result<void>> superwallSetUserAttributes(Map<String, dynamic> attributes) async {
+    AppLogger.debug('Setting Superwall user attributes: ${attributes.keys.join(", ")}', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.setUserAttributes(attributes);
+    final result = await _superwallService!.setUserAttributes(attributes);
+    result.when(
+      success: (_) => AppLogger.info('Successfully set user attributes', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to set user attributes', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Reset Superwall session
-  Future<Result<void>> resetSuperwall() async {
+  Future<Result<void>> superwallReset() async {
+    AppLogger.info('Resetting Superwall session', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.reset();
+    final result = await _superwallService!.reset();
+    result.when(
+      success: (_) => AppLogger.info('Successfully reset Superwall session', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to reset Superwall session', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Handle deep link with Superwall
-  Future<Result<void>> handleSuperwallDeepLink(Uri url) async {
+  Future<Result<void>> superwallHandleDeepLink(Uri url) async {
+    AppLogger.info('Handling Superwall deep link: $url', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.handleDeepLink(url);
+    final result = await _superwallService!.handleDeepLink(url);
+    result.when(
+      success: (_) => AppLogger.info('Successfully handled deep link: $url', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to handle deep link: $url', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Dismiss currently presented paywall
   Future<Result<void>> dismissPaywall() async {
+    AppLogger.info('Dismissing Superwall paywall', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.dismissPaywall();
+    final result = await _superwallService!.dismissPaywall();
+    result.when(
+      success: (_) => AppLogger.info('Successfully dismissed paywall', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to dismiss paywall', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Set subscription status for Superwall
-  Future<Result<void>> setSuperwallSubscriptionStatus({List<String> activeEntitlementIds = const []}) async {
+  Future<Result<void>> superwallSetSubscriptionStatus({List<String> activeEntitlementIds = const []}) async {
+    AppLogger.info('Setting Superwall subscription status with entitlements: ${activeEntitlementIds.join(", ")}', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.setSubscriptionStatus(activeEntitlementIds: activeEntitlementIds);
+    final result = await _superwallService!.setSubscriptionStatus(activeEntitlementIds: activeEntitlementIds);
+    result.when(
+      success: (_) => AppLogger.info('Successfully set subscription status', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to set subscription status', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Refresh subscription status
   Future<Result<void>> refreshSuperwallSubscriptionStatus() async {
+    AppLogger.info('Refreshing Superwall subscription status', tag: superwallTag);
     if (_superwallService == null) {
-      return const Failure(ServiceNotInitializedException('SuperwallService'));
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.refreshSubscriptionStatus();
+    final result = await _superwallService!.refreshSubscriptionStatus();
+    result.when(
+      success: (_) => AppLogger.info('Successfully refreshed subscription status', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to refresh subscription status', error: error, tag: superwallTag),
+    );
+    return result;
+  }
+
+  /// Handle Superwall purchase completion and track to Adjust
+  /// This method is called automatically when a purchase is completed through Superwall
+  Future<void> _onSubscriptionPurchaseCompleted(Product product) async {
+    final isRenewal = await _checkIsRenewal(product.id);
+    try {
+      AppLogger.info('Handling Superwall purchase: ${product.id}', tag: superwallTag);
+
+      // Track the purchase to Adjust using the same logic as regular purchases
+      await _silentTrackSubscriptionEvent(product: product, isRenewalEvent: isRenewal);
+
+      // Emit to success purchase stream with deduplication
+      _emitToSuccessStream(product);
+
+      AppLogger.info('Superwall purchase tracked successfully to Adjust', tag: superwallTag);
+    } catch (e) {
+      AppLogger.error('Failed to track Superwall purchase to Adjust', error: e, tag: superwallTag);
+    }
+  }
+
+  /// Handle Superwall Consumable purchase completion and track to Adjust
+  /// This method is called automatically when a purchase is completed through Superwall
+  Future<void> _onConsumablePurchaseCompleted(Product product) async {
+    try {
+      AppLogger.info('Handling Superwall Consumable Purchase: ${product.id}', tag: superwallTag);
+
+      // Track to Adjust only if token is configured
+      if (_config.adjustConsumableToken != null) {
+        await trackSubscription(
+          eventToken: _config.adjustConsumableToken!,
+          price: product.price,
+          currency: product.currencyCode,
+          subscriptionId: product.id,
+          eventName: "coin_purchase",
+        );
+      }
+
+      // Emit to success purchase stream with deduplication
+      _emitToSuccessStream(product);
+
+      AppLogger.info('Superwall consumable purchase tracked successfully', tag: superwallTag);
+    } catch (e) {
+      AppLogger.error('Failed to track Superwall purchase to Adjust', error: e, tag: superwallTag);
+    }
   }
 }
