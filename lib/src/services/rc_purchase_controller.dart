@@ -1,15 +1,15 @@
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:superwallkit_flutter/superwallkit_flutter.dart' hide LogLevel, StoreProduct;
-
+import 'package:tangent_sdk/src/core/model/product.dart' as product;
 import 'package:tangent_sdk/src/core/utils/app_logger.dart' as app_logger;
 
-typedef SuperwallPurchaseCallback = Future<void> Function(String productId);
+typedef PurchaseCallback = Future<void> Function(product.Product product);
 
 class RCPurchaseController extends PurchaseController {
   static const String _tag = '💳 RCPurchaseController';
-  final SuperwallPurchaseCallback _onSubscriptionPurchaseCompleted;
-  final SuperwallPurchaseCallback _onConsumablePurchaseCompleted;
+  final PurchaseCallback _onSubscriptionPurchaseCompleted;
+  final PurchaseCallback _onConsumablePurchaseCompleted;
 
   RCPurchaseController(this._onSubscriptionPurchaseCompleted, this._onConsumablePurchaseCompleted);
 
@@ -125,7 +125,8 @@ class RCPurchaseController extends PurchaseController {
     try {
       final customerInfo = await Purchases.purchaseStoreProduct(storeProduct);
       if (customerInfo.hasActiveEntitlementOrSubscription()) {
-        _onSubscriptionPurchaseCompleted(storeProduct.identifier);
+        final product = _storeProductToProduct(storeProduct);
+        _onSubscriptionPurchaseCompleted(product);
         return PurchaseResult.purchased;
       } else {
         return PurchaseResult.failed("No active subscriptions found.");
@@ -142,7 +143,8 @@ class RCPurchaseController extends PurchaseController {
     try {
       final customerInfo = await Purchases.purchaseSubscriptionOption(subscriptionOption);
       if (customerInfo.hasActiveEntitlementOrSubscription()) {
-        _onSubscriptionPurchaseCompleted(subscriptionOption.productId);
+        final product = await _subscriptionOptionToProduct(subscriptionOption);
+        _onSubscriptionPurchaseCompleted(product);
         return PurchaseResult.purchased;
       } else {
         return PurchaseResult.failed("No active subscriptions found.");
@@ -159,10 +161,10 @@ class RCPurchaseController extends PurchaseController {
   Future<PurchaseResult> _purchaseConsumableProduct(StoreProduct storeProduct) async {
     try {
       await Purchases.purchaseStoreProduct(storeProduct);
-      _onConsumablePurchaseCompleted(storeProduct.identifier);
+      final product = _storeProductToProduct(storeProduct);
+      _onConsumablePurchaseCompleted(product);
 
       // ✅ If we get here without an exception, the purchase was validated by Apple/Google via RevenueCat
-      // TODO: Add your coin crediting logic here (update balance, persist locally, etc.)
 
       return PurchaseResult.purchased;
     } on PlatformException catch (e) {
@@ -207,6 +209,56 @@ class RCPurchaseController extends PurchaseController {
   }
 
   // MARK: Helpers
+  /// Converts a StoreProduct to our internal Product model
+  product.Product _storeProductToProduct(StoreProduct storeProduct) {
+    return product.Product(
+      id: storeProduct.identifier,
+      title: storeProduct.title,
+      description: storeProduct.description,
+      price: storeProduct.price,
+      priceString: storeProduct.priceString,
+      currencyCode: storeProduct.currencyCode,
+      storeProduct: storeProduct,
+    );
+  }
+
+  /// Converts a SubscriptionOption to our internal Product model
+  Future<product.Product> _subscriptionOptionToProduct(SubscriptionOption subscriptionOption) async {
+    // Fetch the store product for this subscription option
+    final products = await PurchasesAdditions.getAllProducts([subscriptionOption.productId]);
+    final storeProduct = products.firstOrNull;
+
+    if (storeProduct == null) {
+      // Fallback with minimal product info if we can't fetch the full product
+      return product.Product(
+        id: subscriptionOption.productId,
+        title: subscriptionOption.productId,
+        description: '',
+        price:
+            subscriptionOption.pricingPhases.isNotEmpty
+                ? subscriptionOption.pricingPhases.first.price.amountMicros / 1000000.0
+                : 0.0,
+        priceString:
+            subscriptionOption.pricingPhases.isNotEmpty ? subscriptionOption.pricingPhases.first.price.formatted : '',
+        currencyCode:
+            subscriptionOption.pricingPhases.isNotEmpty
+                ? subscriptionOption.pricingPhases.first.price.currencyCode
+                : 'USD',
+        storeProduct: subscriptionOption,
+      );
+    }
+
+    return product.Product(
+      id: subscriptionOption.productId,
+      title: storeProduct.title,
+      description: storeProduct.description,
+      price: storeProduct.price,
+      priceString: storeProduct.priceString,
+      currencyCode: storeProduct.currencyCode,
+      storeProduct: storeProduct,
+    );
+  }
+
   Future<SubscriptionOption?> _fetchGooglePlaySubscriptionOption(
     StoreProduct storeProduct,
     String? basePlanId,
