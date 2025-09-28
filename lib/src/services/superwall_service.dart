@@ -174,6 +174,7 @@ class SuperwallService extends PaywallsService {
 
       AppLogger.info('Preloading paywalls', tag: superwallTag);
       await Superwall.shared.preloadAllPaywalls();
+      AppLogger.info('Successfully preloaded paywalls', tag: superwallTag);
 
       return const Success(null);
     } catch (e, stackTrace) {
@@ -189,6 +190,7 @@ class SuperwallService extends PaywallsService {
 
       AppLogger.debug('Dismissing paywall', tag: superwallTag);
       await Superwall.shared.dismiss();
+      AppLogger.info('Successfully dismissed paywall', tag: superwallTag);
 
       return const Success(null);
     } catch (e, stackTrace) {

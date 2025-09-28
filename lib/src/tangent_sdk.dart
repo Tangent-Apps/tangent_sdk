@@ -517,66 +517,122 @@ class TangentSDK {
     Map<String, Object>? params,
     Function? feature,
   }) async {
+    AppLogger.debug('Registering Superwall placement: $placement', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.registerPlacement(placement, params: params, feature: feature);
+    final result = await _superwallService!.registerPlacement(placement, params: params, feature: feature);
+    result.when(
+      success: (_) => AppLogger.info('Successfully registered placement: $placement', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to register placement: $placement', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Identify user with Superwall
   Future<Result<void>> superwallIdentifySuperwallUser(String userId) async {
+    AppLogger.debug('Identifying Superwall user: $userId', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.identifyUser(userId);
+    final result = await _superwallService!.identifyUser(userId);
+    result.when(
+      success: (_) => AppLogger.info('Successfully identified user: $userId', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to identify user: $userId', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Set user attributes for Superwall
   Future<Result<void>> superwallSetUserAttributes(Map<String, dynamic> attributes) async {
+    AppLogger.debug('Setting Superwall user attributes: ${attributes.keys.join(", ")}', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.setUserAttributes(attributes);
+    final result = await _superwallService!.setUserAttributes(attributes);
+    result.when(
+      success: (_) => AppLogger.info('Successfully set user attributes', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to set user attributes', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Reset Superwall session
   Future<Result<void>> superwallReset() async {
+    AppLogger.info('Resetting Superwall session', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.reset();
+    final result = await _superwallService!.reset();
+    result.when(
+      success: (_) => AppLogger.info('Successfully reset Superwall session', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to reset Superwall session', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Handle deep link with Superwall
   Future<Result<void>> superwallHandleDeepLink(Uri url) async {
+    AppLogger.info('Handling Superwall deep link: $url', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.handleDeepLink(url);
+    final result = await _superwallService!.handleDeepLink(url);
+    result.when(
+      success: (_) => AppLogger.info('Successfully handled deep link: $url', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to handle deep link: $url', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Dismiss currently presented paywall
   Future<Result<void>> dismissPaywall() async {
+    AppLogger.info('Dismissing Superwall paywall', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.dismissPaywall();
+    final result = await _superwallService!.dismissPaywall();
+    result.when(
+      success: (_) => AppLogger.info('Successfully dismissed paywall', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to dismiss paywall', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Set subscription status for Superwall
   Future<Result<void>> superwallSetSubscriptionStatus({List<String> activeEntitlementIds = const []}) async {
+    AppLogger.info('Setting Superwall subscription status with entitlements: ${activeEntitlementIds.join(", ")}', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.setSubscriptionStatus(activeEntitlementIds: activeEntitlementIds);
+    final result = await _superwallService!.setSubscriptionStatus(activeEntitlementIds: activeEntitlementIds);
+    result.when(
+      success: (_) => AppLogger.info('Successfully set subscription status', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to set subscription status', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Refresh subscription status
   Future<Result<void>> refreshSuperwallSubscriptionStatus() async {
+    AppLogger.info('Refreshing Superwall subscription status', tag: superwallTag);
     if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));
     }
-    return await _superwallService!.refreshSubscriptionStatus();
+    final result = await _superwallService!.refreshSubscriptionStatus();
+    result.when(
+      success: (_) => AppLogger.info('Successfully refreshed subscription status', tag: superwallTag),
+      failure: (error) => AppLogger.error('Failed to refresh subscription status', error: error, tag: superwallTag),
+    );
+    return result;
   }
 
   /// Handle Superwall purchase completion and track to Adjust
