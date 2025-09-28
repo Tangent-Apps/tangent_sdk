@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
@@ -16,13 +18,29 @@ class TangentSDK {
   AppReviewService? _appReview;
   PaywallsService? _superwallService;
 
-  TangentSDK._(this._config);
+  // Stream controller for successful purchases
+  late final StreamController<Product> _successPurchaseController;
+  
+  // Deduplication tracking
+  final Map<String, DateTime> _lastEmissionTimes = {};
+  static const Duration _deduplicationWindow = Duration(milliseconds: 1000); // 1 second window
+
+  TangentSDK._(this._config) {
+    _successPurchaseController = StreamController<Product>.broadcast();
+  }
 
   static TangentSDK get instance {
     if (_instance == null) {
       throw const ServiceNotInitializedException('TangentSDK');
     }
     return _instance!;
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    AppLogger.info('Disposing TangentSDK resources', tag: 'TangentSDK');
+    _successPurchaseController.close();
+    _lastEmissionTimes.clear();
   }
 
   /// Initialize the SDK with the provided configuration and optional Firebase options.
@@ -38,7 +56,8 @@ class TangentSDK {
     bool enableDebugLogging = false,
   }) async {
     if (_instance != null) {
-      return _instance!;
+      _instance!.dispose();
+      _instance = null;
     }
 
     // Configure logging
@@ -184,7 +203,7 @@ class TangentSDK {
       final userId = info.data.originalAppUserId;
       _superwallService ??= SuperwallService(
         iOSApiKey: _config.superwallIOSApiKey!,
-        androidApiKey: "",
+        androidApiKey: _config.superwallAndroidApiKey ?? "",
         revenueCarUserId: userId,
         // Set up purchase callback to track events to Adjust
         onSubscriptionPurchaseCompleted: _onSubscriptionPurchaseCompleted,
@@ -378,6 +397,27 @@ class TangentSDK {
 
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
       _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
+
+  /// Stream of successful purchases
+  Stream<Product> get successPurchaseStream {
+    return _successPurchaseController.stream;
+  }
+
+  /// Emit product to success stream with deduplication
+  void _emitToSuccessStream(Product product) {
+    final now = DateTime.now();
+    final lastEmissionTime = _lastEmissionTimes[product.id];
+    
+    // Check if we should emit (no previous emission or outside deduplication window)
+    if (lastEmissionTime == null || now.difference(lastEmissionTime) > _deduplicationWindow) {
+      _lastEmissionTimes[product.id] = now;
+      _successPurchaseController.add(product);
+      AppLogger.info('✅ Emitted ${product.id} to success stream', tag: 'PurchaseStream');
+    } else {
+      final timeSinceLastEmission = now.difference(lastEmissionTime);
+      AppLogger.info('🚫 Blocked duplicate emission of ${product.id} (${timeSinceLastEmission.inMilliseconds}ms ago)', tag: 'PurchaseStream');
+    }
+  }
 
   Future<Result<String?>> getManagementUrl() async {
     return await _revenueService?.getManagementUrl() ?? const Success(null);
@@ -637,28 +677,16 @@ class TangentSDK {
 
   /// Handle Superwall purchase completion and track to Adjust
   /// This method is called automatically when a purchase is completed through Superwall
-  Future<void> _onSubscriptionPurchaseCompleted(String productId) async {
-    final isRenewal = await _checkIsRenewal(productId);
+  Future<void> _onSubscriptionPurchaseCompleted(Product product) async {
+    final isRenewal = await _checkIsRenewal(product.id);
     try {
-      AppLogger.info('Handling Superwall purchase: $productId', tag: superwallTag);
-
-      final result = await _revenueService?.getProducts([productId]) ?? const Success([]);
-      late Product product;
-      result.when(
-        success: (products) async {
-          if (products.isNotEmpty) {
-            product = products.first;
-            return;
-          }
-          AppLogger.error('Product not found for ID: $productId', tag: superwallTag);
-        },
-        failure: (error) {
-          AppLogger.error('Failed to fetch product for ID: $productId, error: $error', tag: superwallTag);
-        },
-      );
+      AppLogger.info('Handling Superwall purchase: ${product.id}', tag: superwallTag);
 
       // Track the purchase to Adjust using the same logic as regular purchases
       await _silentTrackSubscriptionEvent(product: product, isRenewalEvent: isRenewal);
+
+      // Emit to success purchase stream with deduplication
+      _emitToSuccessStream(product);
 
       AppLogger.info('Superwall purchase tracked successfully to Adjust', tag: superwallTag);
     } catch (e) {
@@ -668,35 +696,25 @@ class TangentSDK {
 
   /// Handle Superwall Consumable purchase completion and track to Adjust
   /// This method is called automatically when a purchase is completed through Superwall
-  Future<void> _onConsumablePurchaseCompleted(String productId) async {
+  Future<void> _onConsumablePurchaseCompleted(Product product) async {
     try {
-      if (_config.adjustConsumableToken == null) return;
-      AppLogger.info('Handling Superwall Consumable Purchase: $productId', tag: superwallTag);
+      AppLogger.info('Handling Superwall Consumable Purchase: ${product.id}', tag: superwallTag);
 
-      final result = await _revenueService?.getProducts([productId]) ?? const Success([]);
-      late Product product;
-      result.when(
-        success: (products) async {
-          if (products.isNotEmpty) {
-            product = products.first;
-            return;
-          }
-          AppLogger.error('Product not found for ID: $productId', tag: superwallTag);
-        },
-        failure: (error) {
-          AppLogger.error('Failed to fetch product for ID: $productId, error: $error', tag: superwallTag);
-        },
-      );
+      // Track to Adjust only if token is configured
+      if (_config.adjustConsumableToken != null) {
+        await trackSubscription(
+          eventToken: _config.adjustConsumableToken!,
+          price: product.price,
+          currency: product.currencyCode,
+          subscriptionId: product.id,
+          eventName: "coin_purchase",
+        );
+      }
 
-      await trackSubscription(
-        eventToken: _config.adjustConsumableToken!,
-        price: product.price,
-        currency: product.currencyCode,
-        subscriptionId: product.id,
-        eventName: "coin_purchase",
-      );
+      // Emit to success purchase stream with deduplication
+      _emitToSuccessStream(product);
 
-      AppLogger.info('Superwall purchase tracked successfully to Adjust', tag: superwallTag);
+      AppLogger.info('Superwall consumable purchase tracked successfully', tag: superwallTag);
     } catch (e) {
       AppLogger.error('Failed to track Superwall purchase to Adjust', error: e, tag: superwallTag);
     }

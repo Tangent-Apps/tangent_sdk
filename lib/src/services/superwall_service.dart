@@ -13,8 +13,8 @@ class SuperwallService extends PaywallsService {
   final String iOSApiKey;
   final String androidApiKey;
   final String revenueCarUserId;
-  final SuperwallPurchaseCallback onSubscriptionPurchaseCompleted;
-  final SuperwallPurchaseCallback onConsumablePurchaseCompleted;
+  final PurchaseCallback onSubscriptionPurchaseCompleted;
+  final PurchaseCallback onConsumablePurchaseCompleted;
 
   bool _isInitialized = false;
 
