@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - ...
 
+## [0.0.12] - 2025-10-27
+
+### Updated
+
+- Updated dependencies to their latest versions:
+  - `adjust_sdk: ^5.4.5` (from ^5.4.0)
+
 ## [0.0.11] - 2025-09-29
 
 ### Added
