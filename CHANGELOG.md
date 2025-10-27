@@ -8,21 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - ...
 
 ### Changed
+
 - ...
 
 ### Fixed
+
 - ...
 
 ### Deprecated
+
 - ...
 
 ### Removed
+
 - ...
 
 ### Security
+
 - ...
 
 ## [0.0.12] - 2025-10-27
@@ -35,11 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.11] - 2025-09-29
 
 ### Added
+
 - Success purchases controller/stream in `TangentSDK`:
   - `successPurchaseStream` to listen for successful purchases across both RevenueCat and Superwall flows.
   - Deduplication window (1s) to avoid duplicate emissions.
 
 ### Changed
+
 - Renamed `SuperwallPurchaseCallback` to `PurchaseCallback` for consistency and reuse.
 - Emitting successful purchases from RevenueCat purchase methods to the success stream.
 
@@ -47,13 +55,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Enhanced
 
-- **Improved Logging System**: 
+- **Improved Logging System**:
+
   - Added comprehensive `AppLogger` integration throughout the SDK
   - Enhanced `RCPurchaseController` with tagged logging using 💳 emoji for purchase operations
   - Added detailed logging for purchase flow tracking, error handling with stack traces
   - Improved error visibility for debugging RevenueCat purchase operations
 
 - **Better Superwall Configuration Control**:
+
   - Renamed `autoInitSuperwall` to `enableAutoInitSuperwall` for clearer developer intent
   - Added comprehensive documentation for `initSuperwall()` method
   - Enhanced flexibility for automatic vs manual Superwall initialization
@@ -68,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Configuration Property Naming**:
+
   - `autoInitSuperwall` → `enableAutoInitSuperwall` with enhanced documentation
   - Better clarity on when to use automatic vs manual Superwall initialization
 
@@ -93,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Superwall Integration**: Complete paywall management system with Superwall SDK
+
   - Added `PaywallsService` interface for paywall operations
   - Implemented `SuperwallService` with RevenueCat purchase controller integration
   - Added `RCPurchaseController` for seamless RevenueCat-Superwall integration
@@ -139,7 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Unified event naming for better analytics tracking:
-  - User cancelled purchases now log as `purchase_cancelled` 
+  - User cancelled purchases now log as `purchase_cancelled`
   - Network failures log as `purchase_failed`
   - Subscription renewals log as `subscription_renewed` (was `did_renew_subscription`)
   - New subscriptions log as `subscribe` (was `did_subscribe`)
@@ -155,7 +167,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `firebase_core: ^4.0.0`
   - `firebase_crashlytics: ^5.0.0`
   - `firebase_app_check: ^0.4.0`
-
 
 ## [0.0.4] - 2025-07-18
 
@@ -217,20 +228,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - **Firebase Services**:
-    - Crashlytics for crash reporting
-    - App Check for app authentication
+  - Crashlytics for crash reporting
+  - App Check for app authentication
 - **Analytics**:
-    - Mixpanel event tracking and failure events
-    - Adjust subscription and revenue tracking
+  - Mixpanel event tracking and failure events
+  - Adjust subscription and revenue tracking
 - **Revenue Management**:
-    - Product fetching and purchasing
-    - Subscription management
-    - Active subscription monitoring
-    - Purchase restoration
+  - Product fetching and purchasing
+  - Subscription management
+  - Active subscription monitoring
+  - Purchase restoration
 - **Utility Services**:
-    - App Tracking Transparency (iOS 14.5+)
-    - In-App Review requests
-    - Store listing navigation
+  - App Tracking Transparency (iOS 14.5+)
+  - In-App Review requests
+  - Store listing navigation
 
 ### Dependencies
 
