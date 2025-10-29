@@ -10,18 +10,20 @@ import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
+import 'package:tangent_sdk/src/services/device_identifier_service.dart';
 
-import '../core/exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 
 @immutable
 class RevenueCatService extends PurchasesService {
   final String apiKey;
+  final bool enableAdjustIntegration;
   final StreamController<CustomerPurchasesInfo> _customerPurchasesInfoController =
       StreamController<CustomerPurchasesInfo>.broadcast();
 
-  RevenueCatService(this.apiKey) {
+  RevenueCatService(this.apiKey, {this.enableAdjustIntegration = true}) {
     if (apiKey.trim().isEmpty) {
-      throw ValidationException('apiKey', 'Cannot be empty');
+      throw const ValidationException('apiKey', 'Cannot be empty');
     }
   }
 
@@ -39,10 +41,24 @@ class RevenueCatService extends PurchasesService {
     }).mapErrorAsync((error) => ServiceOperationException('RevenueCat initialization', error.originalError));
   }
 
+  /// Sets up the RevenueCat-Adjust integration by collecting and setting device identifiers.
+  ///
+  /// This method should be called after both RevenueCat and Adjust are initialized.
+  /// It collects device identifiers (Adjust ID, IDFA, GPS AdId, IDFV) and sets them
+  /// as subscriber attributes in RevenueCat for precise revenue attribution.
+  ///
+  /// Returns a Map of successfully collected identifiers.
+  Future<Map<String, String>> setupAdjustIntegration() async {
+    if (!enableAdjustIntegration) return {};
+
+    const deviceIdentifierService = DeviceIdentifierService();
+    return await deviceIdentifierService.collectAndSetIdentifiers();
+  }
+
   @override
   Future<Result<List<Product>>> getProducts(List<String> productIds) async {
     if (productIds.isEmpty) {
-      return Failure(ValidationException('productIds', 'Cannot be empty'));
+      return const Failure(ValidationException('productIds', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -70,7 +86,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<Product>> purchaseProductById(String productId) async {
     if (productId.trim().isEmpty) {
-      return Failure(ValidationException('productId', 'Cannot be empty'));
+      return const Failure(ValidationException('productId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -78,7 +94,7 @@ class RevenueCatService extends PurchasesService {
         final targetPackage = await Purchases.getProducts([productId]);
 
         if (targetPackage.isEmpty) {
-          throw PurchaseMethodException('Product not found');
+          throw const PurchaseMethodException('Product not found');
         }
 
         final storeProduct = targetPackage.first;
@@ -144,7 +160,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<bool>> checkActiveSubscriptionToEntitlement(String entitlementId) async {
     if (entitlementId.trim().isEmpty) {
-      return Failure(ValidationException('entitlementId', 'Cannot be empty'));
+      return const Failure(ValidationException('entitlementId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -158,7 +174,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<List<Product>>> getOffering(String offeringId) async {
     if (offeringId.trim().isEmpty) {
-      return Failure(ValidationException('offeringId', 'Cannot be empty'));
+      return const Failure(ValidationException('offeringId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -236,7 +252,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<void>> logIn(String appUserId) async {
     if (appUserId.trim().isEmpty) {
-      return Failure(ValidationException('appUserId', 'Cannot be empty'));
+      return const Failure(ValidationException('appUserId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
