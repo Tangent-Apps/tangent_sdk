@@ -8,6 +8,7 @@ Review with unified analytics and crash reporting.
 - ✅ **Firebase Integration**: Crashlytics and App Check
 - 📊 **Analytics**: Mixpanel and Adjust
 - 💰 **Revenue Management**: RevenueCat for subscriptions and purchases
+- 🎯 **RevenueCat-Adjust Integration**: Automatic S2S revenue attribution with device identifier collection
 - 🔒 **App Tracking Transparency**: iOS tracking permission handling
 - ⭐ **In-App Review**: Request app-store reviews
 - 🚑 **Unified Error Handling**: Centralized crash reporting and logging
@@ -186,7 +187,7 @@ eventName: 'premium_subscription', // Optional
 result.when(
 success: (product) => print('Product: $product'),
 failure: (error) => print('
-Error: 
+Error:
 $
 error
 '
@@ -219,7 +220,7 @@ failure: (error) => print('Error: $error'),
 );
 }
 },
-failure: (error) => print('Error: 
+failure: (error) => print('Error:
 $
 error
 '
@@ -371,7 +372,7 @@ TangentSDK.instance.requestTrackingAuthorization
 final status = await
 TangentSDK.instance.getTrackingStatus
 ();print
-('Tracking status: 
+('Tracking status:
 $status'
 );
 ```
@@ -383,7 +384,7 @@ $status'
 final adId = await
 TangentSDK.instance.getAdvertisingIdentifier
 ();print
-('Ad ID: 
+('Ad ID:
 $adId'
 );
 ```
@@ -457,7 +458,7 @@ TangentSDK.instance.log
 ### TangentConfig
 
 | Parameter                        | Type                | Required | Default | Description                                      |
-|----------------------------------|---------------------|----------|---------|--------------------------------------------------|
+| -------------------------------- | ------------------- | -------- | ------- | ------------------------------------------------ |
 | `mixpanelToken`                  | String?             | No       | null    | Mixpanel project token                           |
 | `adjustAppToken`                 | String?             | No       | null    | Adjust app token                                 |
 | `environment`                    | TangentEnvironment? | No       | null    | Adjust environment (production/sandbox)          |
@@ -557,6 +558,97 @@ The SDK automatically detects renewal purchases and tracks them appropriately:
 - **New subscriptions**: Tracked with `adjustSubscriptionToken`
 - **Renewals**: Tracked with `adjustSubscriptionRenewalToken`
 - **Automatic detection**: Based on purchase history and original purchase date
+
+### RevenueCat-Adjust Integration
+
+The SDK includes automatic integration between RevenueCat and Adjust for precise revenue attribution. This enables server-to-server (S2S) revenue tracking from RevenueCat to Adjust with accurate campaign attribution.
+
+#### Dashboard Setup
+
+In addition to SDK configuration, you must configure the integration in the RevenueCat dashboard:
+
+1. Navigate to **Integrations → Adjust**
+2. Add your Adjust app tokens (iOS and Android)
+3. Configure event tokens for different purchase types
+4. Select revenue reporting preference (gross vs net)
+5. Enable the integration
+
+#### How It Works
+
+1. **Automatic Device Identifier Collection**: During SDK initialization, the SDK automatically collects device identifiers required for attribution:
+
+   - Adjust ID (required)
+   - iOS: IDFA (advertising identifier), IDFV (vendor identifier)
+   - Android: GPS AdId (Google advertising ID)
+
+2. **RevenueCat Subscriber Attributes**: Identifiers are automatically set as subscriber attributes in RevenueCat
+
+3. **Server-to-Server Events**: RevenueCat forwards purchase events to Adjust with proper attribution data
+
+4. **Revenue Attribution**: Revenue appears in Adjust dashboard with accurate campaign attribution
+
+#### Configuration
+
+The integration is **enabled by default** and requires no additional code:
+
+```dart
+final config = TangentConfig(
+  adjustAppToken: 'your_adjust_token',
+  revenueCatApiKey: 'your_revenuecat_key',
+  environment: TangentEnvironment.production,
+  enableAnalytics: true,
+  enableRevenue: true,
+  // Integration is enabled by default
+  enableRevenueCatAdjustIntegration: true, // Optional: explicitly set
+);
+```
+
+#### Verification
+
+Enable debug logging to verify identifier collection:
+
+```dart
+await TangentSDK.initialize(
+  config: config,
+  enableDebugLogging: true,
+);
+```
+
+Look for these log messages:
+
+```
+[Revenue] Setting up RevenueCat-Adjust integration
+[DeviceIdentifiers] Collected 3 identifiers: $adjustId, $idfa, $idfv
+[Revenue] RevenueCat-Adjust integration configured with 3 identifiers
+```
+
+Verify in RevenueCat dashboard:
+
+- Open any customer profile
+- Check "Subscriber Attributes" section
+- Confirm presence of `$adjustId`, `$idfa`/`$idfv` (iOS) or `$gpsAdId` (Android)
+
+#### Important Notes
+
+- **Double Tracking Prevention**: This S2S integration is separate from `automaticTrackSubscription`. Configure carefully to avoid double-counting revenue.
+- **iOS IDFA**: Requires App Tracking Transparency (ATT) authorization. Set `enableAppTrackingTransparency: true` in config.
+- **Minimum Revenue**: Adjust requires minimum revenue of 0.001 (free trials send events without revenue)
+- **Timing**: Identifiers are collected during SDK initialization, before the first purchase
+
+#### Disabling the Integration
+
+If you prefer to handle attribution separately:
+
+```dart
+final config = TangentConfig(
+  // ... other config ...
+  enableRevenueCatAdjustIntegration: false, // Disable integration
+);
+```
+
+#### Reference
+
+- [RevenueCat Adjust Integration Guide](https://www.revenuecat.com/docs/integrations/attribution/adjust)
 
 ## Support
 

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
-import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
 import 'package:tangent_sdk/src/services/superwall_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
 
@@ -20,7 +19,7 @@ class TangentSDK {
 
   // Stream controller for successful purchases
   late final StreamController<Product> _successPurchaseController;
-  
+
   // Deduplication tracking
   final Map<String, DateTime> _lastEmissionTimes = {};
   static const Duration _deduplicationWindow = Duration(milliseconds: 1000); // 1 second window
@@ -124,9 +123,22 @@ class TangentSDK {
     // Initialize purchases service
     if (_config.enableRevenue && _config.revenueCatApiKey != null) {
       AppLogger.info('Initializing RevenueCat Service', tag: 'Revenue');
-      _revenueService = RevenueCatService(_config.revenueCatApiKey!);
+      _revenueService = RevenueCatService(
+        _config.revenueCatApiKey!,
+        enableAdjustIntegration: _config.enableRevenueCatAdjustIntegration,
+      );
       await _revenueService!.initialize();
       AppLogger.info('RevenueCat Service initialized', tag: 'Revenue');
+
+      // Set up RevenueCat-Adjust integration if both services are enabled
+      if (_config.enableRevenueCatAdjustIntegration && _config.adjustAppToken != null) {
+        AppLogger.info('Setting up RevenueCat-Adjust integration', tag: 'Revenue');
+        final identifiers = await (_revenueService! as RevenueCatService).setupAdjustIntegration();
+        AppLogger.info(
+          'RevenueCat-Adjust integration configured with ${identifiers.length} identifiers',
+          tag: 'Revenue',
+        );
+      }
     }
 
     await Future.wait([
@@ -436,7 +448,7 @@ class TangentSDK {
   void _emitToSuccessStream(Product product) {
     final now = DateTime.now();
     final lastEmissionTime = _lastEmissionTimes[product.id];
-    
+
     // Check if we should emit (no previous emission or outside deduplication window)
     if (lastEmissionTime == null || now.difference(lastEmissionTime) > _deduplicationWindow) {
       _lastEmissionTimes[product.id] = now;
@@ -444,7 +456,10 @@ class TangentSDK {
       AppLogger.info('✅ Emitted ${product.id} to success stream', tag: 'PurchaseStream');
     } else {
       final timeSinceLastEmission = now.difference(lastEmissionTime);
-      AppLogger.info('🚫 Blocked duplicate emission of ${product.id} (${timeSinceLastEmission.inMilliseconds}ms ago)', tag: 'PurchaseStream');
+      AppLogger.info(
+        '🚫 Blocked duplicate emission of ${product.id} (${timeSinceLastEmission.inMilliseconds}ms ago)',
+        tag: 'PurchaseStream',
+      );
     }
   }
 
@@ -711,7 +726,10 @@ class TangentSDK {
 
   /// Set subscription status for Superwall
   Future<Result<void>> superwallSetSubscriptionStatus({List<String> activeEntitlementIds = const []}) async {
-    AppLogger.info('Setting Superwall subscription status with entitlements: ${activeEntitlementIds.join(", ")}', tag: superwallTag);
+    AppLogger.info(
+      'Setting Superwall subscription status with entitlements: ${activeEntitlementIds.join(", ")}',
+      tag: superwallTag,
+    );
     if (_superwallService == null) {
       AppLogger.error('Superwall service not initialized', tag: superwallTag);
       return const Failure(ServiceNotInitializedException(superwallTag));

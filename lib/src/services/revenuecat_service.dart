@@ -11,16 +11,18 @@ import 'package:tangent_sdk/src/core/model/entitlement.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
+import 'package:tangent_sdk/src/services/device_identifier_service.dart';
 
-import '../core/exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 
 @immutable
 class RevenueCatService extends PurchasesService {
   final String apiKey;
+  final bool enableAdjustIntegration;
   final StreamController<CustomerPurchasesInfo> _customerPurchasesInfoController =
       StreamController<CustomerPurchasesInfo>.broadcast();
 
-  RevenueCatService(this.apiKey) {
+  RevenueCatService(this.apiKey, {this.enableAdjustIntegration = true}) {
     if (apiKey.trim().isEmpty) {
       throw const ValidationException('apiKey', 'Cannot be empty');
     }
@@ -38,6 +40,20 @@ class RevenueCatService extends PurchasesService {
         }
       });
     }).mapErrorAsync((error) => ServiceOperationException('RevenueCat initialization', error.originalError));
+  }
+
+  /// Sets up the RevenueCat-Adjust integration by collecting and setting device identifiers.
+  ///
+  /// This method should be called after both RevenueCat and Adjust are initialized.
+  /// It collects device identifiers (Adjust ID, IDFA, GPS AdId, IDFV) and sets them
+  /// as subscriber attributes in RevenueCat for precise revenue attribution.
+  ///
+  /// Returns a Map of successfully collected identifiers.
+  Future<Map<String, String>> setupAdjustIntegration() async {
+    if (!enableAdjustIntegration) return {};
+
+    const deviceIdentifierService = DeviceIdentifierService();
+    return await deviceIdentifierService.collectAndSetIdentifiers();
   }
 
   @override
