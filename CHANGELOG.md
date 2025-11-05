@@ -31,6 +31,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [0.0.14] - 2025-11-04
+
+### Added
+
+- **Purchase Context Tracking**: Enhanced purchase tracking with contextual metadata
+  - `setPurchaseContext(Map<String, String> context)` - Set context before purchases
+  - `clearPurchaseContext()` - Clear stored context
+  - `purchaseContext` getter - View current context
+  - Context automatically included in all purchase events (Superwall, RevenueCat, manual purchases)
+  - Context data flows to both Adjust and Mixpanel analytics services
+
+- **Enhanced Purchase Methods**: Added optional context parameter to direct purchase methods
+  - `purchaseProductById(String productId, {context})` - Direct purchase with context
+  - `purchaseProduct(Product product, {context})` - Product purchase with context
+  - Smart fallback: Uses provided context or falls back to pending context from `setPurchaseContext()`
+
+### Changed
+
+- **Analytics Service Interface**: Updated `logSubscriptionEvent` to include optional context parameter
+- **Purchase Event Tracking**: All purchase events now include contextual metadata when available
+- **Automatic Context Management**: Context is automatically cleared after successful purchase to prevent reuse
+
+### Examples
+
+```dart
+// Set context before Superwall purchase
+TangentSDK.instance.setPurchaseContext({
+  'book_title': 'Flutter Mastery',
+  'chapter': 'Chapter 5',
+  'source_screen': 'reading_page'
+});
+await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
+
+// Direct purchase with context
+await TangentSDK.instance.purchaseProductById(
+  'premium_monthly',
+  context: {'book_title': 'Flutter Guide'}
+);
+```
+
 ## [0.0.13] - 2025-10-27
 
 ### Changed

@@ -55,6 +55,7 @@ class AdjustAnalyticsService implements AnalyticsService {
     required String currency,
     required String subscriptionId,
     required String? eventName,
+    Map<String, String>? context,
   }) async {
     final event = AdjustEvent(eventToken);
 
@@ -66,7 +67,14 @@ class AdjustAnalyticsService implements AnalyticsService {
     event.addCallbackParameter('currency', currency);
     event.addCallbackParameter('price', price.toString());
     event.addCallbackParameter('eventName', eventName ?? "successful_purchase");
-    event.addCallbackParameter('tangent_sdk_version', '0.0.6');
+    event.addCallbackParameter('tangent_sdk_version', '0.0.14');
+
+    // Add purchase context if provided
+    if (context != null) {
+      context.forEach((key, value) {
+        event.addCallbackParameter(key, value);
+      });
+    }
 
     // Add campaign tracking parameters
     await _addCampaignParameters(event);
