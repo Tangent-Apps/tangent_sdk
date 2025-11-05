@@ -25,6 +25,9 @@ class TangentSDK {
   final Map<String, DateTime> _lastEmissionTimes = {};
   static const Duration _deduplicationWindow = Duration(milliseconds: 1000); // 1 second window
 
+  // Purchase context storage for automatic tracking
+  Map<String, String>? _pendingPurchaseContext;
+
   TangentSDK._(this._config) {
     _successPurchaseController = StreamController<Product>.broadcast();
   }
@@ -41,6 +44,7 @@ class TangentSDK {
     AppLogger.info('Disposing TangentSDK resources', tag: 'TangentSDK');
     _successPurchaseController.close();
     _lastEmissionTimes.clear();
+    _pendingPurchaseContext = null;
   }
 
   /// Initialize the SDK with the provided configuration and optional Firebase options.
@@ -272,6 +276,7 @@ class TangentSDK {
     required String currency,
     required String subscriptionId,
     required String? eventName,
+    Map<String, String>? context,
   }) async {
     AppLogger.info(
       'Automatic Tracking Purchase Events is ${_config.automaticTrackSubscription} logSubscriptionEvent',
@@ -285,6 +290,7 @@ class TangentSDK {
           currency: currency,
           subscriptionId: subscriptionId,
           eventName: eventName,
+          context: context,
         );
       }
     } else {
@@ -301,9 +307,11 @@ class TangentSDK {
   /// Returns a [Result] of [CustomerPurchasesInfo]
   /// Automatically tracks subscription events
   /// Automatically tracks failure events
-  Future<Result<Product>> purchaseProductById(String productId, {String? eventToken, String? eventName}) async {
+  Future<Result<Product>> purchaseProductById(String productId, {String? eventToken, String? eventName, Map<String, String>? context}) async {
     // Check if this is a renewal before making the purchase
     final isRenewal = await _checkIsRenewal(productId);
+    // Use provided context or fallback to pending context
+    final finalContext = context ?? _pendingPurchaseContext;
     final productResult = await _revenueService?.purchaseProductById(productId);
 
     if (productResult == null) {
@@ -312,12 +320,21 @@ class TangentSDK {
 
     if (productResult.isSuccess) {
       final product = productResult.data;
-      _silentTrackSubscriptionEvent(
+      if (finalContext != null) {
+        AppLogger.info('Using purchase context: ${finalContext.keys.join(', ')}', tag: 'PurchaseContext');
+      }
+      
+      await _silentTrackSubscriptionEvent(
         product: product,
         isRenewalEvent: isRenewal,
         eventName: eventName,
         eventToken: eventToken,
+        context: finalContext,
       );
+      
+      // Clear pending context after use
+      _pendingPurchaseContext = null;
+      
       return Success(product);
     } else {
       await _trackPurchaseFailureEvent(failure: productResult.error, productId: productId);
@@ -333,9 +350,12 @@ class TangentSDK {
     Product product, {
     String? eventToken,
     String? eventName,
+    Map<String, String>? context,
   }) async {
     // Check if this is a renewal before making the purchase
     final isRenewal = await _checkIsRenewal(product.id);
+    // Use provided context or fallback to pending context
+    final finalContext = context ?? _pendingPurchaseContext;
     final productResult = await _revenueService?.purchaseProduct(product);
 
     if (productResult == null) {
@@ -344,12 +364,21 @@ class TangentSDK {
 
     if (productResult.isSuccess) {
       final customerPurchasesInfo = productResult.data;
+      if (finalContext != null) {
+        AppLogger.info('Using purchase context: ${finalContext.keys.join(', ')}', tag: 'PurchaseContext');
+      }
+      
       _silentTrackSubscriptionEvent(
         product: product,
         isRenewalEvent: isRenewal,
         eventToken: eventToken,
         eventName: eventName,
+        context: finalContext,
       );
+      
+      // Clear pending context after use
+      _pendingPurchaseContext = null;
+      
       return Success(customerPurchasesInfo);
     } else {
       await _trackPurchaseFailureEvent(
@@ -463,6 +492,7 @@ class TangentSDK {
     bool isRenewalEvent = false,
     String? eventToken,
     String? eventName,
+    Map<String, String>? context,
   }) async {
     try {
       await trackSubscription(
@@ -472,6 +502,7 @@ class TangentSDK {
         currency: product.currencyCode,
         subscriptionId: product.id,
         eventName: eventName ?? (isRenewalEvent ? "subscription_renewed" : "subscribe"),
+        context: context,
       );
     } catch (err) {
       AppLogger.error(err.toString());
@@ -549,6 +580,35 @@ class TangentSDK {
   Future<void> openStoreListing({String? appStoreId}) async {
     await _appReview?.openStoreListing(appStoreId: appStoreId);
   }
+
+  // Purchase Context Methods
+  /// Set purchase context that will be automatically included in the next purchase event.
+  /// This context will be sent to both Adjust and Mixpanel when a purchase is completed.
+  /// 
+  /// Example usage:
+  /// ```dart
+  /// TangentSDK.instance.setPurchaseContext({
+  ///   'book_title': 'Flutter Mastery',
+  ///   'chapter': 'Chapter 5',
+  ///   'source_screen': 'reading_page'
+  /// });
+  /// 
+  /// // User purchases through Superwall - context automatically included
+  /// await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
+  /// ```
+  void setPurchaseContext(Map<String, String> context) {
+    _pendingPurchaseContext = context;
+    AppLogger.info('Purchase context set with keys: ${context.keys.join(', ')}', tag: 'PurchaseContext');
+  }
+
+  /// Clear any pending purchase context
+  void clearPurchaseContext() {
+    _pendingPurchaseContext = null;
+    AppLogger.info('Purchase context cleared', tag: 'PurchaseContext');
+  }
+
+  /// Get the current pending purchase context (readonly)
+  Map<String, String>? get purchaseContext => _pendingPurchaseContext;
 
   /// MARK: Superwall/Paywall Methods
   /// Register a placement with Superwall
@@ -679,11 +739,23 @@ class TangentSDK {
   /// This method is called automatically when a purchase is completed through Superwall
   Future<void> _onSubscriptionPurchaseCompleted(Product product) async {
     final isRenewal = await _checkIsRenewal(product.id);
+    final context = _pendingPurchaseContext;
+    
     try {
       AppLogger.info('Handling Superwall purchase: ${product.id}', tag: superwallTag);
+      if (context != null) {
+        AppLogger.info('Using purchase context: ${context.keys.join(', ')}', tag: superwallTag);
+      }
 
       // Track the purchase to Adjust using the same logic as regular purchases
-      await _silentTrackSubscriptionEvent(product: product, isRenewalEvent: isRenewal);
+      await _silentTrackSubscriptionEvent(
+        product: product, 
+        isRenewalEvent: isRenewal,
+        context: context,
+      );
+
+      // Clear context after use
+      _pendingPurchaseContext = null;
 
       // Emit to success purchase stream with deduplication
       _emitToSuccessStream(product);
@@ -697,8 +769,13 @@ class TangentSDK {
   /// Handle Superwall Consumable purchase completion and track to Adjust
   /// This method is called automatically when a purchase is completed through Superwall
   Future<void> _onConsumablePurchaseCompleted(Product product) async {
+    final context = _pendingPurchaseContext;
+    
     try {
       AppLogger.info('Handling Superwall Consumable Purchase: ${product.id}', tag: superwallTag);
+      if (context != null) {
+        AppLogger.info('Using purchase context: ${context.keys.join(', ')}', tag: superwallTag);
+      }
 
       // Track to Adjust only if token is configured
       if (_config.adjustConsumableToken != null) {
@@ -708,8 +785,12 @@ class TangentSDK {
           currency: product.currencyCode,
           subscriptionId: product.id,
           eventName: "coin_purchase",
+          context: context,
         );
       }
+
+      // Clear context after use
+      _pendingPurchaseContext = null;
 
       // Emit to success purchase stream with deduplication
       _emitToSuccessStream(product);

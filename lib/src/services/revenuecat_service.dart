@@ -123,6 +123,7 @@ class RevenueCatService extends PurchasesService {
     return resultOfAsync(() async {
       final CustomerInfo result = await Purchases.restorePurchases();
       final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(result);
+      _customerPurchasesInfoController.add(customerPurchasesInfo);
       return customerPurchasesInfo;
     }).mapErrorAsync((error) => PurchaseMethodException('restorePurchases', originalError: error.originalError));
   }
@@ -144,7 +145,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<bool>> checkActiveSubscriptionToEntitlement(String entitlementId) async {
     if (entitlementId.trim().isEmpty) {
-      return Failure(ValidationException('entitlementId', 'Cannot be empty'));
+      return const Failure(ValidationException('entitlementId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -158,7 +159,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<List<Product>>> getOffering(String offeringId) async {
     if (offeringId.trim().isEmpty) {
-      return Failure(ValidationException('offeringId', 'Cannot be empty'));
+      return const Failure(ValidationException('offeringId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -236,7 +237,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<void>> logIn(String appUserId) async {
     if (appUserId.trim().isEmpty) {
-      return Failure(ValidationException('appUserId', 'Cannot be empty'));
+      return const Failure(ValidationException('appUserId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {

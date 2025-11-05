@@ -13,6 +13,7 @@ Review with unified analytics and crash reporting.
 - 🚑 **Unified Error Handling**: Centralized crash reporting and logging
 - 🔄 **Automatic Renewal Detection**: Intelligent tracking of new vs. renewal purchases
 - 📈 **Automatic Failure Tracking**: Purchase errors automatically sent to analytics
+- 📊 **Purchase Context Tracking**: Include custom metadata (book_title, chapter, etc.) with all purchase events
 
 ## Installation
 
@@ -20,7 +21,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  tangent_sdk: ^0.0.4
+  tangent_sdk: ^0.0.14
 ```
 
 Then run:
@@ -226,6 +227,58 @@ error
 ,
 );
 ```
+
+#### Purchase Context Tracking
+
+Track additional metadata with purchases (e.g., book_title, chapter, source_screen) that will be sent to both Adjust and Mixpanel analytics:
+
+**Option 1: Set context before purchase (works with all purchase methods)**
+
+```dart
+// Set context before any purchase
+TangentSDK.instance.setPurchaseContext({
+  'book_title': 'Flutter Mastery',
+  'chapter': 'Chapter 5',
+  'source_screen': 'reading_page',
+  'user_level': 'beginner'
+});
+
+// Purchase through Superwall (context automatically included)
+await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
+
+// Or purchase directly (context automatically included)
+await TangentSDK.instance.purchaseProductById('premium_monthly');
+```
+
+**Option 2: Pass context directly in purchase methods**
+
+```dart
+// Direct context in purchase call
+final result = await TangentSDK.instance.purchaseProductById(
+  'premium_monthly',
+  context: {
+    'book_title': 'Flutter Advanced',
+    'chapter': 'State Management'
+  }
+);
+
+// Context overrides any pending context from setPurchaseContext()
+```
+
+**Context Management**
+
+```dart
+// View current context
+final context = TangentSDK.instance.purchaseContext;
+
+// Clear context
+TangentSDK.instance.clearPurchaseContext();
+```
+
+**Analytics Integration**
+- **Adjust**: Context data sent as callback parameters
+- **Mixpanel**: Context data included in event properties  
+- **Automatic**: Context cleared after successful purchase to prevent reuse
 
 #### Check Active Subscription
 

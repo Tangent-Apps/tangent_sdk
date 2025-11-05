@@ -51,7 +51,7 @@ class MixpanelAnalyticsService implements AnalyticsService {
       AppLogger.info('sending event to mixPanel: $eventName');
       await _mixpanel!.track(
         eventName,
-        properties: {if (properties != null) ...properties, 'tangent_sdk_version': '0.0.6'},
+        properties: {if (properties != null) ...properties, 'tangent_sdk_version': '0.0.14'},
       );
       AppLogger.info('Successfully event sent to mixPanel: $eventName');
     });
@@ -64,13 +64,26 @@ class MixpanelAnalyticsService implements AnalyticsService {
     required String currency,
     required String subscriptionId,
     required String? eventName,
+    Map<String, String>? context,
   }) async {
     if (_mixpanel == null) {
       return const Failure(ServiceNotInitializedException('MixpanelAnalyticsService'));
     }
+    final properties = <String, Object>{
+      'event_token': eventToken,
+      'price': price,
+      'currency': currency,
+      'subscription_id': subscriptionId,
+    };
+
+    // Add purchase context if provided
+    if (context != null) {
+      properties.addAll(context);
+    }
+
     return _sendEventToServer(
       eventName: eventName ?? "purchase",
-      properties: {'event_token': eventToken, 'price': price, 'currency': currency, 'subscription_id': subscriptionId},
+      properties: properties,
     );
   }
 }
