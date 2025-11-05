@@ -31,21 +31,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
-## [0.0.14] - 2025-11-04
+## [0.0.15] - 2025-11-04
 
 ### Added
 
 - **Purchase Context Tracking**: Enhanced purchase tracking with contextual metadata
-  - `setPurchaseContext(Map<String, String> context)` - Set context before purchases
-  - `clearPurchaseContext()` - Clear stored context
-  - `purchaseContext` getter - View current context
-  - Context automatically included in all purchase events (Superwall, RevenueCat, manual purchases)
-  - Context data flows to both Adjust and Mixpanel analytics services
+    - `setPurchaseContext(Map<String, String> context)` - Set context before purchases
+    - `clearPurchaseContext()` - Clear stored context
+    - `purchaseContext` getter - View current context
+    - Context automatically included in all purchase events (Superwall, RevenueCat, manual purchases)
+    - Context data flows to both Adjust and Mixpanel analytics services
 
 - **Enhanced Purchase Methods**: Added optional context parameter to direct purchase methods
-  - `purchaseProductById(String productId, {context})` - Direct purchase with context
-  - `purchaseProduct(Product product, {context})` - Product purchase with context
-  - Smart fallback: Uses provided context or falls back to pending context from `setPurchaseContext()`
+    - `purchaseProductById(String productId, {context})` - Direct purchase with context
+    - `purchaseProduct(Product product, {context})` - Product purchase with context
+    - Smart fallback: Uses provided context or falls back to pending context from `setPurchaseContext()`
 
 ### Changed
 
@@ -82,15 +82,15 @@ await TangentSDK.instance.purchaseProductById(
 ### Updated
 
 - Updated dependencies to their latest versions:
-  - `adjust_sdk: ^5.4.5` (from ^5.4.0)
+    - `adjust_sdk: ^5.4.5` (from ^5.4.0)
 
 ## [0.0.11] - 2025-09-29
 
 ### Added
 
 - Success purchases controller/stream in `TangentSDK`:
-  - `successPurchaseStream` to listen for successful purchases across both RevenueCat and Superwall flows.
-  - Deduplication window (1s) to avoid duplicate emissions.
+    - `successPurchaseStream` to listen for successful purchases across both RevenueCat and Superwall flows.
+    - Deduplication window (1s) to avoid duplicate emissions.
 
 ### Changed
 
@@ -103,47 +103,47 @@ await TangentSDK.instance.purchaseProductById(
 
 - **Improved Logging System**:
 
-  - Added comprehensive `AppLogger` integration throughout the SDK
-  - Enhanced `RCPurchaseController` with tagged logging using 💳 emoji for purchase operations
-  - Added detailed logging for purchase flow tracking, error handling with stack traces
-  - Improved error visibility for debugging RevenueCat purchase operations
+    - Added comprehensive `AppLogger` integration throughout the SDK
+    - Enhanced `RCPurchaseController` with tagged logging using 💳 emoji for purchase operations
+    - Added detailed logging for purchase flow tracking, error handling with stack traces
+    - Improved error visibility for debugging RevenueCat purchase operations
 
 - **Better Superwall Configuration Control**:
 
-  - Renamed `autoInitSuperwall` to `enableAutoInitSuperwall` for clearer developer intent
-  - Added comprehensive documentation for `initSuperwall()` method
-  - Enhanced flexibility for automatic vs manual Superwall initialization
-  - Added detailed use cases and examples for different initialization patterns
+    - Renamed `autoInitSuperwall` to `enableAutoInitSuperwall` for clearer developer intent
+    - Added comprehensive documentation for `initSuperwall()` method
+    - Enhanced flexibility for automatic vs manual Superwall initialization
+    - Added detailed use cases and examples for different initialization patterns
 
 - **SDK Architecture Improvements**:
-  - Refactored service initialization to use `Future.wait()` for parallel initialization
-  - Separated crash reporting, app check, and ATT initialization into dedicated methods
-  - Improved service startup performance and error isolation
-  - Enhanced method naming consistency across Superwall API methods
+    - Refactored service initialization to use `Future.wait()` for parallel initialization
+    - Separated crash reporting, app check, and ATT initialization into dedicated methods
+    - Improved service startup performance and error isolation
+    - Enhanced method naming consistency across Superwall API methods
 
 ### Changed
 
 - **Configuration Property Naming**:
 
-  - `autoInitSuperwall` → `enableAutoInitSuperwall` with enhanced documentation
-  - Better clarity on when to use automatic vs manual Superwall initialization
+    - `autoInitSuperwall` → `enableAutoInitSuperwall` with enhanced documentation
+    - Better clarity on when to use automatic vs manual Superwall initialization
 
 - **Method Naming Consistency**:
-  - Prefixed all Superwall methods with `superwall` for better API organization
-  - `registerPlacement()` → `superwallRegisterPlacement()`
-  - `identifySuperwallUser()` → `superwallIdentifySuperwallUser()`
-  - `setSuperwallUserAttributes()` → `superwallSetUserAttributes()`
-  - `resetSuperwall()` → `superwallReset()`
-  - `handleSuperwallDeepLink()` → `superwallHandleDeepLink()`
-  - `setSuperwallSubscriptionStatus()` → `superwallSetSubscriptionStatus()`
+    - Prefixed all Superwall methods with `superwall` for better API organization
+    - `registerPlacement()` → `superwallRegisterPlacement()`
+    - `identifySuperwallUser()` → `superwallIdentifySuperwallUser()`
+    - `setSuperwallUserAttributes()` → `superwallSetUserAttributes()`
+    - `resetSuperwall()` → `superwallReset()`
+    - `handleSuperwallDeepLink()` → `superwallHandleDeepLink()`
+    - `setSuperwallSubscriptionStatus()` → `superwallSetSubscriptionStatus()`
 
 ### Fixed
 
 - **Purchase Flow Error Handling**:
-  - Enhanced error logging with proper stack traces in `RCPurchaseController`
-  - Added comprehensive error tracking for product not found scenarios
-  - Improved purchase failure detection and reporting
-  - Better error context for Google Play subscription option failures
+    - Enhanced error logging with proper stack traces in `RCPurchaseController`
+    - Added comprehensive error tracking for product not found scenarios
+    - Improved purchase failure detection and reporting
+    - Better error context for Google Play subscription option failures
 
 ## [0.0.8] - 2025-09-08
 
@@ -151,23 +151,23 @@ await TangentSDK.instance.purchaseProductById(
 
 - **Superwall Integration**: Complete paywall management system with Superwall SDK
 
-  - Added `PaywallsService` interface for paywall operations
-  - Implemented `SuperwallService` with RevenueCat purchase controller integration
-  - Added `RCPurchaseController` for seamless RevenueCat-Superwall integration
-  - New configuration options: `enableSuperwall`, `superwallIOSApiKey`, `superwallAndroidApiKey`
-  - Automatic user identification using RevenueCat user ID
-  - Automatic subscription status synchronization between RevenueCat and Superwall
+    - Added `PaywallsService` interface for paywall operations
+    - Implemented `SuperwallService` with RevenueCat purchase controller integration
+    - Added `RCPurchaseController` for seamless RevenueCat-Superwall integration
+    - New configuration options: `enableSuperwall`, `superwallIOSApiKey`, `superwallAndroidApiKey`
+    - Automatic user identification using RevenueCat user ID
+    - Automatic subscription status synchronization between RevenueCat and Superwall
 
 - **New SDK Methods for Paywall Management**:
-  - `registerPlacement()` - Register paywall placements with optional parameters
-  - `identifySuperwallUser()` - Identify users for personalized paywalls
-  - `setSuperwallUserAttributes()` - Set user attributes for targeting
-  - `resetSuperwall()` - Reset Superwall session
-  - `handleSuperwallDeepLink()` - Handle deep links through Superwall
-  - `preloadPaywalls()` - Preload paywalls for better performance
-  - `dismissPaywall()` - Programmatically dismiss paywalls
-  - `setSuperwallSubscriptionStatus()` - Set subscription status with entitlements
-  - `refreshSuperwallSubscriptionStatus()` - Refresh subscription status
+    - `registerPlacement()` - Register paywall placements with optional parameters
+    - `identifySuperwallUser()` - Identify users for personalized paywalls
+    - `setSuperwallUserAttributes()` - Set user attributes for targeting
+    - `resetSuperwall()` - Reset Superwall session
+    - `handleSuperwallDeepLink()` - Handle deep links through Superwall
+    - `preloadPaywalls()` - Preload paywalls for better performance
+    - `dismissPaywall()` - Programmatically dismiss paywalls
+    - `setSuperwallSubscriptionStatus()` - Set subscription status with entitlements
+    - `refreshSuperwallSubscriptionStatus()` - Refresh subscription status
 
 ### Changed
 
@@ -197,10 +197,10 @@ await TangentSDK.instance.purchaseProductById(
 ### Changed
 
 - Unified event naming for better analytics tracking:
-  - User cancelled purchases now log as `purchase_cancelled`
-  - Network failures log as `purchase_failed`
-  - Subscription renewals log as `subscription_renewed` (was `did_renew_subscription`)
-  - New subscriptions log as `subscribe` (was `did_subscribe`)
+    - User cancelled purchases now log as `purchase_cancelled`
+    - Network failures log as `purchase_failed`
+    - Subscription renewals log as `subscription_renewed` (was `did_renew_subscription`)
+    - New subscriptions log as `subscribe` (was `did_subscribe`)
 - Created private `_trackPurchaseFailureEvent` method to centralize failure tracking logic
 
 ## [0.0.5] - 2025-07-30
@@ -210,9 +210,9 @@ await TangentSDK.instance.purchaseProductById(
 - Added `managementURL`.
 
 - Updated Firebase dependencies to their latest stable versions:
-  - `firebase_core: ^4.0.0`
-  - `firebase_crashlytics: ^5.0.0`
-  - `firebase_app_check: ^0.4.0`
+    - `firebase_core: ^4.0.0`
+    - `firebase_crashlytics: ^5.0.0`
+    - `firebase_app_check: ^0.4.0`
 
 ## [0.0.4] - 2025-07-18
 
@@ -274,20 +274,20 @@ await TangentSDK.instance.purchaseProductById(
 ### Features
 
 - **Firebase Services**:
-  - Crashlytics for crash reporting
-  - App Check for app authentication
+    - Crashlytics for crash reporting
+    - App Check for app authentication
 - **Analytics**:
-  - Mixpanel event tracking and failure events
-  - Adjust subscription and revenue tracking
+    - Mixpanel event tracking and failure events
+    - Adjust subscription and revenue tracking
 - **Revenue Management**:
-  - Product fetching and purchasing
-  - Subscription management
-  - Active subscription monitoring
-  - Purchase restoration
+    - Product fetching and purchasing
+    - Subscription management
+    - Active subscription monitoring
+    - Purchase restoration
 - **Utility Services**:
-  - App Tracking Transparency (iOS 14.5+)
-  - In-App Review requests
-  - Store listing navigation
+    - App Tracking Transparency (iOS 14.5+)
+    - In-App Review requests
+    - Store listing navigation
 
 ### Dependencies
 

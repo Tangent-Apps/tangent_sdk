@@ -21,7 +21,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  tangent_sdk: ^0.0.14
+  tangent_sdk: ^0.0.15
 ```
 
 Then run:
@@ -230,7 +230,8 @@ error
 
 #### Purchase Context Tracking
 
-Track additional metadata with purchases (e.g., book_title, chapter, source_screen) that will be sent to both Adjust and Mixpanel analytics:
+Track additional metadata with purchases (e.g., book_title, chapter, source_screen) that will be sent to both Adjust and
+Mixpanel analytics:
 
 **Option 1: Set context before purchase (works with all purchase methods)**
 
@@ -276,8 +277,9 @@ TangentSDK.instance.clearPurchaseContext();
 ```
 
 **Analytics Integration**
+
 - **Adjust**: Context data sent as callback parameters
-- **Mixpanel**: Context data included in event properties  
+- **Mixpanel**: Context data included in event properties
 - **Automatic**: Context cleared after successful purchase to prevent reuse
 
 #### Check Active Subscription
