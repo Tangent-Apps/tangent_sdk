@@ -139,6 +139,7 @@ class RevenueCatService extends PurchasesService {
     return resultOfAsync(() async {
       final CustomerInfo result = await Purchases.restorePurchases();
       final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(result);
+      _customerPurchasesInfoController.add(customerPurchasesInfo);
       return customerPurchasesInfo;
     }).mapErrorAsync((error) => PurchaseMethodException('restorePurchases', originalError: error.originalError));
   }

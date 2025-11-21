@@ -15,6 +15,7 @@ abstract class AnalyticsService {
     required String currency,
     required String subscriptionId,
     required String? eventName,
+    Map<String, String>? context,
   });
 
   Future<Result<void>> logFailureEvent({required String eventName, required String failureReason, Map<String, Object>? properties});
