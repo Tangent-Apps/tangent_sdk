@@ -22,7 +22,7 @@ class RevenueCatService extends PurchasesService {
   final StreamController<CustomerPurchasesInfo> _customerPurchasesInfoController =
       StreamController<CustomerPurchasesInfo>.broadcast();
 
-  RevenueCatService(this.apiKey, {this.enableAdjustIntegration = true}) {
+  RevenueCatService(this.apiKey, {required this.enableAdjustIntegration}) {
     if (apiKey.trim().isEmpty) {
       throw const ValidationException('apiKey', 'Cannot be empty');
     }
