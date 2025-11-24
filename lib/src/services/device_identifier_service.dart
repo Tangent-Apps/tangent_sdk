@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:adjust_sdk/adjust.dart';
+// import 'package:adjust_sdk/adjustAnalyticsService.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
+import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
 
 /// Service responsible for collecting device identifiers required for
 /// RevenueCat-Adjust integration.
@@ -21,8 +22,8 @@ import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 @immutable
 class DeviceIdentifierService {
   static const String _tag = 'DeviceIdentifiers';
-
-  const DeviceIdentifierService();
+  final AdjustAnalyticsService _adjustAnalyticsService;
+  const DeviceIdentifierService(this._adjustAnalyticsService);
 
   /// Collects all available device identifiers and sets them as RevenueCat subscriber attributes.
   ///
@@ -68,7 +69,7 @@ class DeviceIdentifierService {
   Future<String?> _collectAdjustId() async {
     try {
       AppLogger.info('Collect Adjust ID');
-      final adid = await Adjust.getAdid();
+      final adid = await _adjustAnalyticsService.getAdjustId();
       AppLogger.info('Collected Adjust ID');
       return adid;
     } catch (e) {
@@ -82,7 +83,7 @@ class DeviceIdentifierService {
     try {
       // Collect IDFA (iOS Advertising Identifier)
       AppLogger.info('Collected: Idfa');
-      final idfa = await Adjust.getIdfa();
+      final idfa = await _adjustAnalyticsService.getIdfa();
       if (idfa != null && idfa.isNotEmpty && idfa != '00000000-0000-0000-0000-000000000000') {
         identifiers['\$idfa'] = idfa;
         await Purchases.setAttributes({'\$idfa': idfa});
@@ -93,7 +94,7 @@ class DeviceIdentifierService {
 
       // Collect IDFV (iOS Vendor Identifier)
       AppLogger.info('Collected: Idfv');
-      final idfv = await Adjust.getIdfv();
+      final idfv = await _adjustAnalyticsService.getIdfv();
       if (idfv != null && idfv.isNotEmpty) {
         identifiers['\$idfv'] = idfv;
         await Purchases.setAttributes({'\$idfv': idfv});
@@ -112,7 +113,7 @@ class DeviceIdentifierService {
       // Collect GPS AdId (Google Advertising ID)
       // Note: On Android, the Google Play Services Advertising ID is collected by Adjust
       // and transmitted automatically. We use the Adjust ADID here as it's the primary identifier.
-      final gpsAdId = await Adjust.getAdid();
+      final gpsAdId = await _adjustAnalyticsService.getAdjustId();
 
       if (gpsAdId != null && gpsAdId.isNotEmpty) {
         identifiers['\$gpsAdId'] = gpsAdId;

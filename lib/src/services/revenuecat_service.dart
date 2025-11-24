@@ -11,6 +11,7 @@ import 'package:tangent_sdk/src/core/model/entitlement.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
+import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
 import 'package:tangent_sdk/src/services/device_identifier_service.dart';
 
 import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
@@ -49,10 +50,10 @@ class RevenueCatService extends PurchasesService {
   /// as subscriber attributes in RevenueCat for precise revenue attribution.
   ///
   /// Returns a Map of successfully collected identifiers.
-  Future<Map<String, String>> setupAdjustIntegration() async {
+  Future<Map<String, String>> setupAdjustIntegration({required AdjustAnalyticsService adjustAnalyticsService}) async {
     if (!enableAdjustIntegration) return {};
 
-    const deviceIdentifierService = DeviceIdentifierService();
+    final deviceIdentifierService = DeviceIdentifierService(adjustAnalyticsService);
     return await deviceIdentifierService.collectAndSetIdentifiers();
   }
 

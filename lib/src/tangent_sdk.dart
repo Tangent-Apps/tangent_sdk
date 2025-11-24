@@ -84,7 +84,9 @@ class TangentSDK {
   /// [config] The configuration object containing the SDK settings.
   /// [firebaseOptions] Optional Firebase options for initializing Firebase.
   Future<void> _initializeServices() async {
-    // Initialize analytics services
+    late final AdjustAnalyticsService? adjust;
+
+    /// Initialize analytics services
     if (_config.enableAnalytics) {
       if (_config.mixpanelToken != null) {
         AppLogger.info('Initializing Mixpanel Analytics Service', tag: 'Analytics');
@@ -96,7 +98,7 @@ class TangentSDK {
 
       if (_config.adjustAppToken != null && _config.environment != null) {
         AppLogger.info('Initializing Adjust Analytics Service', tag: 'Analytics');
-        final adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
+        adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
         await adjust.initialize();
         _analyticsServices.add(adjust);
         AppLogger.info('Adjust Analytics Service initialized', tag: 'Analytics');
@@ -133,11 +135,15 @@ class TangentSDK {
       // Set up RevenueCat-Adjust integration if both services are enabled
       if (_config.enableRevenueCatAdjustIntegration && _config.adjustAppToken != null) {
         AppLogger.info('Setting up RevenueCat-Adjust integration', tag: 'Revenue');
-        final identifiers = await (_revenueService! as RevenueCatService).setupAdjustIntegration();
-        AppLogger.info(
-          'RevenueCat-Adjust integration configured with ${identifiers.length} identifiers',
-          tag: 'Revenue',
-        );
+        if (adjust != null) {
+          final identifiers = await (_revenueService! as RevenueCatService).setupAdjustIntegration(
+            adjustAnalyticsService: adjust,
+          );
+          AppLogger.info(
+            'RevenueCat-Adjust integration configured with ${identifiers.length} identifiers',
+            tag: 'Revenue',
+          );
+        }
       }
     }
 
@@ -319,7 +325,12 @@ class TangentSDK {
   /// Returns a [Result] of [CustomerPurchasesInfo]
   /// Automatically tracks subscription events
   /// Automatically tracks failure events
-  Future<Result<Product>> purchaseProductById(String productId, {String? eventToken, String? eventName, Map<String, String>? context}) async {
+  Future<Result<Product>> purchaseProductById(
+    String productId, {
+    String? eventToken,
+    String? eventName,
+    Map<String, String>? context,
+  }) async {
     // Check if this is a renewal before making the purchase
     final isRenewal = await _checkIsRenewal(productId);
     // Use provided context or fallback to pending context
@@ -335,7 +346,7 @@ class TangentSDK {
       if (finalContext != null) {
         AppLogger.info('Using purchase context: ${finalContext.keys.join(', ')}', tag: 'PurchaseContext');
       }
-      
+
       await _silentTrackSubscriptionEvent(
         product: product,
         isRenewalEvent: isRenewal,
@@ -343,10 +354,10 @@ class TangentSDK {
         eventToken: eventToken,
         context: finalContext,
       );
-      
+
       // Clear pending context after use
       _pendingPurchaseContext = null;
-      
+
       return Success(product);
     } else {
       await _trackPurchaseFailureEvent(failure: productResult.error, productId: productId);
@@ -379,7 +390,7 @@ class TangentSDK {
       if (finalContext != null) {
         AppLogger.info('Using purchase context: ${finalContext.keys.join(', ')}', tag: 'PurchaseContext');
       }
-      
+
       _silentTrackSubscriptionEvent(
         product: product,
         isRenewalEvent: isRenewal,
@@ -387,10 +398,10 @@ class TangentSDK {
         eventName: eventName,
         context: finalContext,
       );
-      
+
       // Clear pending context after use
       _pendingPurchaseContext = null;
-      
+
       return Success(customerPurchasesInfo);
     } else {
       await _trackPurchaseFailureEvent(
@@ -603,7 +614,7 @@ class TangentSDK {
   // Purchase Context Methods
   /// Set purchase context that will be automatically included in the next purchase event.
   /// This context will be sent to both Adjust and Mixpanel when a purchase is completed.
-  /// 
+  ///
   /// Example usage:
   /// ```dart
   /// TangentSDK.instance.setPurchaseContext({
@@ -611,7 +622,7 @@ class TangentSDK {
   ///   'chapter': 'Chapter 5',
   ///   'source_screen': 'reading_page'
   /// });
-  /// 
+  ///
   /// // User purchases through Superwall - context automatically included
   /// await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
   /// ```
@@ -762,7 +773,7 @@ class TangentSDK {
   Future<void> _onSubscriptionPurchaseCompleted(Product product) async {
     final isRenewal = await _checkIsRenewal(product.id);
     final context = _pendingPurchaseContext;
-    
+
     try {
       AppLogger.info('Handling Superwall purchase: ${product.id}', tag: superwallTag);
       if (context != null) {
@@ -770,11 +781,7 @@ class TangentSDK {
       }
 
       // Track the purchase to Adjust using the same logic as regular purchases
-      await _silentTrackSubscriptionEvent(
-        product: product, 
-        isRenewalEvent: isRenewal,
-        context: context,
-      );
+      await _silentTrackSubscriptionEvent(product: product, isRenewalEvent: isRenewal, context: context);
 
       // Clear context after use
       _pendingPurchaseContext = null;
@@ -792,7 +799,7 @@ class TangentSDK {
   /// This method is called automatically when a purchase is completed through Superwall
   Future<void> _onConsumablePurchaseCompleted(Product product) async {
     final context = _pendingPurchaseContext;
-    
+
     try {
       AppLogger.info('Handling Superwall Consumable Purchase: ${product.id}', tag: superwallTag);
       if (context != null) {
