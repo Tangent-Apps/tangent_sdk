@@ -40,6 +40,7 @@ class DeviceIdentifierService {
       final adjustId = await _collectAdjustId();
       if (adjustId != null) {
         identifiers['\$adjustId'] = adjustId;
+        AppLogger.info('Try to set Adjust ID: $adjustId', tag: _tag);
         await Purchases.setAdjustID(adjustId);
         AppLogger.info('Set Adjust ID: $adjustId', tag: _tag);
       } else {
@@ -66,7 +67,9 @@ class DeviceIdentifierService {
   /// Collect Adjust ID from Adjust SDK
   Future<String?> _collectAdjustId() async {
     try {
+      AppLogger.info('Collect Adjust ID');
       final adid = await Adjust.getAdid();
+      AppLogger.info('Collected Adjust ID');
       return adid;
     } catch (e) {
       AppLogger.error('Failed to collect Adjust ID', error: e, tag: _tag);
@@ -78,6 +81,7 @@ class DeviceIdentifierService {
   Future<void> _collectIOSIdentifiers(Map<String, String> identifiers) async {
     try {
       // Collect IDFA (iOS Advertising Identifier)
+      AppLogger.info('Collected: Idfa');
       final idfa = await Adjust.getIdfa();
       if (idfa != null && idfa.isNotEmpty && idfa != '00000000-0000-0000-0000-000000000000') {
         identifiers['\$idfa'] = idfa;
@@ -88,6 +92,7 @@ class DeviceIdentifierService {
       }
 
       // Collect IDFV (iOS Vendor Identifier)
+      AppLogger.info('Collected: Idfv');
       final idfv = await Adjust.getIdfv();
       if (idfv != null && idfv.isNotEmpty) {
         identifiers['\$idfv'] = idfv;
