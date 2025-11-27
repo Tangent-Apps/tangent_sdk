@@ -452,6 +452,10 @@ class TangentSDK {
     return await _revenueService?.getManagementUrl() ?? const Success(null);
   }
 
+  Future<Result<List<Entitlement>>> getEntitlements() async {
+    return await _revenueService?.getEntitlements() ?? const Success([]);
+  }
+
   /// Determines if the given `productId` is a renewal purchase based on the
   /// existing purchase history.
   ///
