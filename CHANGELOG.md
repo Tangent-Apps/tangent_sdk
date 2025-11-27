@@ -31,6 +31,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [0.0.16] - 2025-11-27
+
+### Added
+
+- **Entitlement Model**: New comprehensive `Entitlement` model for detailed entitlement information
+    - `identifier` - Unique entitlement identifier
+    - `productIdentifier` - Associated product ID
+    - `isActive` - Current activation status
+    - `originalPurchaseDate` - When entitlement was first unlocked
+    - `latestPurchaseDate` - Last renewal or purchase date
+    - `expirationDate` - Expiration date (null for lifetime entitlements)
+    - `willRenew` - Auto-renewal status
+    - `isSandbox` - Sandbox environment indicator
+    - Includes `copyWith()` method for immutable updates
+    - Readable `toString()` implementation for debugging
+
+- **New SDK Methods for Entitlement Management**:
+    - `getEntitlements()` - Retrieve all entitlements with full details
+    - Returns `Result<List<Entitlement>>` with comprehensive entitlement data
+    - Replaces simple boolean checks with rich entitlement objects
+
+### Changed
+
+- **Enhanced Entitlement Retrieval**: Upgraded from simple Map-based entitlement checks to detailed Entitlement objects
+    - Previous: `Map<String, bool>` showing only active status
+    - Now: `List<Entitlement>` with purchase dates, expiration, renewal status, and more
+- **PurchasesService Interface**: Added `getEntitlements()` method to service contract
+- **RevenueCatService Implementation**: Full implementation of entitlement retrieval with automatic conversion from RevenueCat data
+
+### Examples
+
+```dart
+// Retrieve all entitlements
+final result = await TangentSDK.instance.getEntitlements();
+
+result.when(
+  success: (entitlements) {
+    // Access detailed entitlement information
+    for (final entitlement in entitlements) {
+      print('Entitlement: ${entitlement.identifier}');
+      print('  Product: ${entitlement.productIdentifier}');
+      print('  Active: ${entitlement.isActive}');
+      print('  Expires: ${entitlement.expirationDate}');
+      print('  Will Renew: ${entitlement.willRenew}');
+    }
+
+    // Filter active entitlements
+    final active = entitlements.where((e) => e.isActive).toList();
+
+    // Check specific entitlement
+    final hasPremium = entitlements.any(
+      (e) => e.identifier == 'premium' && e.isActive
+    );
+  },
+  failure: (error) => print('Error: $error'),
+);
+```
+
 ## [0.0.15] - 2025-11-04
 
 ### Added
