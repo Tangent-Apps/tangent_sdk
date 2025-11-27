@@ -84,7 +84,7 @@ class TangentSDK {
   /// [config] The configuration object containing the SDK settings.
   /// [firebaseOptions] Optional Firebase options for initializing Firebase.
   Future<void> _initializeServices() async {
-    late final AdjustAnalyticsService? adjust;
+    AdjustAnalyticsService? adjust;
 
     /// Initialize analytics services
     if (_config.enableAnalytics) {
