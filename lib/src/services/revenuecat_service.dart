@@ -7,6 +7,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:tangent_sdk/src/core/helper/customer_purchase_info_helper.dart';
 import 'package:tangent_sdk/src/core/helper/purchase_error_helper.dart';
 import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
+import 'package:tangent_sdk/src/core/model/entitlement.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
@@ -21,7 +22,7 @@ class RevenueCatService extends PurchasesService {
 
   RevenueCatService(this.apiKey) {
     if (apiKey.trim().isEmpty) {
-      throw ValidationException('apiKey', 'Cannot be empty');
+      throw const ValidationException('apiKey', 'Cannot be empty');
     }
   }
 
@@ -42,7 +43,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<List<Product>>> getProducts(List<String> productIds) async {
     if (productIds.isEmpty) {
-      return Failure(ValidationException('productIds', 'Cannot be empty'));
+      return const Failure(ValidationException('productIds', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -70,7 +71,7 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<Product>> purchaseProductById(String productId) async {
     if (productId.trim().isEmpty) {
-      return Failure(ValidationException('productId', 'Cannot be empty'));
+      return const Failure(ValidationException('productId', 'Cannot be empty'));
     }
 
     return resultOfAsync(() async {
@@ -78,7 +79,7 @@ class RevenueCatService extends PurchasesService {
         final targetPackage = await Purchases.getProducts([productId]);
 
         if (targetPackage.isEmpty) {
-          throw PurchaseMethodException('Product not found');
+          throw const PurchaseMethodException('Product not found');
         }
 
         final storeProduct = targetPackage.first;
@@ -232,6 +233,32 @@ class RevenueCatService extends PurchasesService {
       final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
       return customerInfo.managementURL;
     }).mapErrorAsync((error) => PurchaseMethodException('getManagementUrl', originalError: error.originalError));
+  }
+
+  @override
+  Future<Result<List<Entitlement>>> getEntitlements() async {
+    return resultOfAsync(() async {
+      final CustomerInfo customerInfo = await Purchases.getCustomerInfo();
+      final entitlements = <Entitlement>[];
+
+      // Convert all RevenueCat entitlements to our Entitlement model
+      customerInfo.entitlements.all.forEach((id, info) {
+        entitlements.add(
+          Entitlement(
+            identifier: id,
+            productIdentifier: info.productIdentifier,
+            isActive: info.isActive,
+            originalPurchaseDate: DateTime.tryParse(info.originalPurchaseDate),
+            latestPurchaseDate: DateTime.tryParse(info.latestPurchaseDate),
+            expirationDate: info.expirationDate != null ? DateTime.tryParse(info.expirationDate!) : null,
+            willRenew: info.willRenew,
+            isSandbox: info.isSandbox,
+          ),
+        );
+      });
+
+      return entitlements;
+    }).mapErrorAsync((error) => PurchaseMethodException('getEntitlements', originalError: error.originalError));
   }
 
   @override

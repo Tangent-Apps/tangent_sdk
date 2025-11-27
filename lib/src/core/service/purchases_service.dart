@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:meta/meta.dart';
 import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
+import 'package:tangent_sdk/src/core/model/entitlement.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 
 import '../types/result.dart';
@@ -32,6 +33,8 @@ abstract class PurchasesService {
   Future<Result<void>> logIn(String appUserId);
 
   Future<Result<String?>> getManagementUrl();
+
+  Future<Result<List<Entitlement>>> getEntitlements();
 
   Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream;
 }
