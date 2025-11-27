@@ -1,6 +1,7 @@
 library tangent_sdk;
 
 export 'package:app_tracking_transparency/app_tracking_transparency.dart' show TrackingStatus;
+export 'package:tangent_sdk/src/core/model/constants.dart';
 export 'package:tangent_sdk/src/core/enum/tangent_environment.dart';
 export 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 export 'package:tangent_sdk/src/core/model/tangent_config.dart';
@@ -10,6 +11,7 @@ export 'package:tangent_sdk/src/core/service/crash_reporting_service.dart';
 export 'package:tangent_sdk/src/core/service/paywalls_service.dart';
 export 'src/core/enum/purchase_failure_code.dart';
 export 'src/core/model/customer_purchases_info.dart';
+export 'src/core/model/entitlement.dart';
 export 'src/core/model/product.dart';
 export 'src/core/model/purchase.dart';
 export 'src/core/types/result.dart';
