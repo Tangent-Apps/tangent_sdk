@@ -1,3 +1,4 @@
+// src/tangent_sdk.dart
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -128,6 +129,7 @@ class TangentSDK {
       _revenueService = RevenueCatService(
         _config.revenueCatApiKey!,
         enableAdjustIntegration: _config.enableRevenueCatAdjustIntegration,
+        enableFirebaseIntegration: _config.enableRevenueCatFirebaseIntegration,
       );
       await _revenueService!.initialize();
       AppLogger.info('RevenueCat Service initialized', tag: 'Revenue');
@@ -141,6 +143,23 @@ class TangentSDK {
           );
           AppLogger.info(
             'RevenueCat-Adjust integration configured with ${identifiers.length} identifiers',
+            tag: 'Revenue',
+          );
+        }
+      }
+
+      // Set up RevenueCat-Firebase Analytics integration if enabled
+      if (_config.enableRevenueCatFirebaseIntegration) {
+        AppLogger.info('Setting up RevenueCat-Firebase Analytics integration', tag: 'Revenue');
+        final appInstanceId = await (_revenueService! as RevenueCatService).setupFirebaseIntegration();
+        if (appInstanceId != null) {
+          AppLogger.info(
+            'RevenueCat-Firebase integration configured with App Instance ID: $appInstanceId',
+            tag: 'Revenue',
+          );
+        } else {
+          AppLogger.error(
+            'Failed to set up RevenueCat-Firebase integration. Ensure Firebase is initialized with firebaseOptions.',
             tag: 'Revenue',
           );
         }

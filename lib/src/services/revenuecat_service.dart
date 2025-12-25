@@ -1,5 +1,7 @@
+// src/services/revenuecat_service.dart
 import 'dart:async';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' as service;
 import 'package:meta/meta.dart';
@@ -20,10 +22,15 @@ import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 class RevenueCatService extends PurchasesService {
   final String apiKey;
   final bool enableAdjustIntegration;
+  final bool enableFirebaseIntegration;
   final StreamController<CustomerPurchasesInfo> _customerPurchasesInfoController =
       StreamController<CustomerPurchasesInfo>.broadcast();
 
-  RevenueCatService(this.apiKey, {required this.enableAdjustIntegration}) {
+  RevenueCatService(
+    this.apiKey, {
+    required this.enableAdjustIntegration,
+    required this.enableFirebaseIntegration,
+  }) {
     if (apiKey.trim().isEmpty) {
       throw const ValidationException('apiKey', 'Cannot be empty');
     }
@@ -55,6 +62,33 @@ class RevenueCatService extends PurchasesService {
 
     final deviceIdentifierService = DeviceIdentifierService(adjustAnalyticsService);
     return await deviceIdentifierService.collectAndSetIdentifiers();
+  }
+
+  /// Sets up the RevenueCat-Firebase Analytics integration by setting the Firebase App Instance ID.
+  ///
+  /// This method should be called after both Firebase and RevenueCat are initialized.
+  /// It retrieves the Firebase App Instance ID and sets it as a subscriber attribute
+  /// in RevenueCat, enabling RevenueCat to send subscriber lifecycle events to Google Analytics.
+  ///
+  /// Returns the Firebase App Instance ID if successfully set, null otherwise.
+  Future<String?> setupFirebaseIntegration() async {
+    if (!enableFirebaseIntegration) return null;
+
+    try {
+      final firebaseAnalytics = FirebaseAnalytics.instance;
+      final appInstanceId = await firebaseAnalytics.appInstanceId;
+
+      if (appInstanceId == null || appInstanceId.isEmpty) {
+        return null;
+      }
+
+      // Set the Firebase App Instance ID as a subscriber attribute in RevenueCat
+      await Purchases.setFirebaseAppInstanceId(appInstanceId);
+      return appInstanceId;
+    } catch (e) {
+      // Silently fail if Firebase Analytics is not available
+      return null;
+    }
   }
 
   @override
