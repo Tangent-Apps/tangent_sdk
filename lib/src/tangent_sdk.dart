@@ -164,6 +164,12 @@ class TangentSDK {
           );
         }
       }
+
+      // Initial sync of RevenueCat customer data to Mixpanel People
+      if (_config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
+        AppLogger.info('Performing initial RevenueCat to Mixpanel sync', tag: 'Mixpanel-RevenueCat-Sync');
+        await syncRevenueCatToMixpanel();
+      }
     }
 
     await Future.wait([
@@ -335,6 +341,168 @@ class TangentSDK {
     }
   }
 
+  //
+  // MARK: - Mixpanel People API Methods
+
+  /// Identify a user in Mixpanel with their unique ID
+  /// This should be called when a user logs in or when you want to associate events with a specific user
+  Future<void> identifyUser(String userId) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.identify(userId);
+        if (result.isFailure) {
+          AppLogger.error('Failed to identify user in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Set user properties in Mixpanel People
+  /// Example: setMixpanelUserProperties({'name': 'John Doe', 'email': 'john@example.com', 'plan': 'premium'})
+  Future<void> setMixpanelUserProperties(Map<String, dynamic> properties) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.setUserProperties(properties);
+        if (result.isFailure) {
+          AppLogger.error('Failed to set user properties in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Set user properties in Mixpanel People only once (won't overwrite existing values)
+  /// Useful for properties like signup date, referral source, etc.
+  Future<void> setMixpanelUserPropertiesOnce(Map<String, dynamic> properties) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.setUserPropertiesOnce(properties);
+        if (result.isFailure) {
+          AppLogger.error('Failed to set user properties once in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Increment a numeric user property in Mixpanel People
+  /// Example: incrementMixpanelUserProperty('login_count') or incrementMixpanelUserProperty('credits', 10)
+  Future<void> incrementMixpanelUserProperty(String property, [double value = 1]) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.incrementUserProperty(property, value);
+        if (result.isFailure) {
+          AppLogger.error('Failed to increment user property in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Append a value to a list property in Mixpanel People
+  /// Example: appendToMixpanelUserProperty('favorite_genres', 'Action')
+  Future<void> appendToMixpanelUserProperty(String property, dynamic value) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.appendToUserProperty(property, value);
+        if (result.isFailure) {
+          AppLogger.error('Failed to append to user property in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Union values with a list property in Mixpanel People (only adds if not already present)
+  /// Example: unionMixpanelUserProperty('tags', ['premium', 'early_adopter'])
+  Future<void> unionMixpanelUserProperty(String property, List<dynamic> values) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.unionUserProperty(property, values);
+        if (result.isFailure) {
+          AppLogger.error('Failed to union user property in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Remove a user property from Mixpanel People
+  Future<void> unsetMixpanelUserProperty(String property) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.unsetUserProperty(property);
+        if (result.isFailure) {
+          AppLogger.error('Failed to unset user property in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Delete the user profile from Mixpanel People
+  /// This should be called when a user requests account deletion
+  Future<void> deleteMixpanelUser() async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.deleteUser();
+        if (result.isFailure) {
+          AppLogger.error('Failed to delete user in Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Reset Mixpanel (clears distinct_id and starts fresh)
+  /// This should be called when a user logs out
+  Future<void> resetMixpanel() async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.reset();
+        if (result.isFailure) {
+          AppLogger.error('Failed to reset Mixpanel: ${result.error}', tag: 'Mixpanel-People');
+        }
+      }
+    }
+  }
+
+  /// Sync RevenueCat customer data to Mixpanel People
+  /// This sets user properties based on their subscription status
+  Future<void> syncRevenueCatToMixpanel() async {
+    final customerInfoResult = await _revenueService?.getCustomerPurchasesInfo();
+    if (customerInfoResult == null) {
+      AppLogger.error('RevenueCat service not initialized', tag: 'Mixpanel-RevenueCat-Sync');
+      return;
+    }
+
+    customerInfoResult.when(
+      success: (customerInfo) async {
+        final properties = <String, dynamic>{
+          'rc_user_id': customerInfo.originalAppUserId,
+          'rc_has_active_subscription': customerInfo.hasActiveSubscription,
+          'rc_active_subscriptions': customerInfo.purchases.where((p) => p.isActive).map((p) => p.productId).toList(),
+          'rc_management_url': customerInfo.managementURL,
+        };
+
+        // Get entitlements if available
+        final entitlementsResult = await _revenueService?.getEntitlements();
+        entitlementsResult?.when(
+          success: (entitlements) {
+            properties['rc_active_entitlements'] =
+                entitlements.where((e) => e.isActive).map((e) => e.identifier).toList();
+            properties['rc_entitlement_count'] = entitlements.where((e) => e.isActive).length;
+          },
+          failure: (_) {},
+        );
+
+        // Identify user with RevenueCat user ID
+        await identifyUser(customerInfo.originalAppUserId);
+
+        // Set user properties
+        await setMixpanelUserProperties(properties);
+
+        AppLogger.info('Successfully synced RevenueCat data to Mixpanel', tag: 'Mixpanel-RevenueCat-Sync');
+      },
+      failure: (error) {
+        AppLogger.error('Failed to sync RevenueCat to Mixpanel: $error', tag: 'Mixpanel-RevenueCat-Sync');
+      },
+    );
+  }
+
   // Revenue Methods
   Future<Result<List<Product>>> getProducts(List<String> productIds) async {
     return await _revenueService?.getProducts(productIds) ?? const Success([]);
@@ -376,6 +544,11 @@ class TangentSDK {
 
       // Clear pending context after use
       _pendingPurchaseContext = null;
+
+      // Sync to Mixpanel after successful purchase
+      if (_config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
+        await syncRevenueCatToMixpanel();
+      }
 
       return Success(product);
     } else {
@@ -421,6 +594,11 @@ class TangentSDK {
       // Clear pending context after use
       _pendingPurchaseContext = null;
 
+      // Sync to Mixpanel after successful purchase
+      if (_config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
+        await syncRevenueCatToMixpanel();
+      }
+
       return Success(customerPurchasesInfo);
     } else {
       await _trackPurchaseFailureEvent(
@@ -443,7 +621,8 @@ class TangentSDK {
   }
 
   Future<Result<CustomerPurchasesInfo>> restorePurchases() async {
-    return await _revenueService?.restorePurchases() ??
+    final result =
+        await _revenueService?.restorePurchases() ??
         const Success(
           CustomerPurchasesInfo(
             hasActiveSubscription: false,
@@ -452,10 +631,27 @@ class TangentSDK {
             managementURL: null,
           ),
         );
+
+    // Sync to Mixpanel after successful restore
+    if (result.isSuccess && _config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
+      AppLogger.info('Purchases restored, syncing to Mixpanel', tag: 'RevenueCat-Restore');
+      await syncRevenueCatToMixpanel();
+    }
+
+    return result;
   }
 
   Future<Result<void>> logIn(String appUserId) async {
-    return await _revenueService?.logIn(appUserId) ?? const Failure(ServiceNotInitializedException('PurchasesService'));
+    final result =
+        await _revenueService?.logIn(appUserId) ?? const Failure(ServiceNotInitializedException('PurchasesService'));
+
+    // Automatically sync user data to Mixpanel on successful login
+    if (result.isSuccess && _config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
+      AppLogger.info('User logged in, syncing to Mixpanel', tag: 'RevenueCat-Login');
+      await syncRevenueCatToMixpanel();
+    }
+
+    return result;
   }
 
   Future<Result<List<Product>>> getOffering(String offeringId) async {

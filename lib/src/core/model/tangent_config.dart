@@ -98,6 +98,39 @@ class TangentConfig {
   /// Defaults to `false`.
   final bool enableRevenueCatFirebaseIntegration;
 
+  /// Controls whether RevenueCat customer data is automatically synced to Mixpanel People.
+  ///
+  /// When `true` (default): The SDK automatically syncs RevenueCat customer data to Mixpanel People
+  /// as user profile properties. This happens:
+  /// - Initially after RevenueCat initialization
+  /// - After user login via `logIn()`
+  /// - After successful purchases via `purchaseProduct()` or `purchaseProductById()`
+  /// - After restore purchases via `restorePurchases()`
+  ///
+  /// When `false`: No automatic syncing occurs. You can still manually call `syncRevenueCatToMixpanel()`.
+  ///
+  /// **What gets synced:**
+  /// - `rc_user_id` - RevenueCat user identifier
+  /// - `rc_has_active_subscription` - Boolean subscription status
+  /// - `rc_active_subscriptions` - Array of active product IDs
+  /// - `rc_active_entitlements` - Array of active entitlement IDs
+  /// - `rc_entitlement_count` - Number of active entitlements
+  /// - `rc_management_url` - Subscription management URL
+  ///
+  /// **Requirements:**
+  /// - `mixpanelToken` must be configured
+  /// - `enableRevenue` must be `true`
+  /// - `revenueCatApiKey` must be configured
+  ///
+  /// **Note:** This is complementary to RevenueCat's server-to-server Mixpanel integration:
+  /// - Server integration sends subscription **events** (trial_started, renewal, etc.)
+  /// - Client integration sets user **profile properties** (current subscription state)
+  ///
+  /// Both integrations serve different purposes and can be used together for comprehensive tracking.
+  ///
+  /// Defaults to `true`.
+  final bool enableMixpanelRevenueCatSync;
+
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
@@ -117,5 +150,6 @@ class TangentConfig {
     this.adjustConsumableToken,
     this.enableRevenueCatAdjustIntegration = true,
     this.enableRevenueCatFirebaseIntegration = false,
+    this.enableMixpanelRevenueCatSync = true,
   });
 }
