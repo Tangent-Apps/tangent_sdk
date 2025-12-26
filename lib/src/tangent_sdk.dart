@@ -503,6 +503,81 @@ class TangentSDK {
     );
   }
 
+  // MARK: - Mixpanel Super Properties Methods
+
+  /// Register super properties that will be sent with every Mixpanel event
+  /// Super properties are automatically included in all events until explicitly cleared
+  /// Example: registerMixpanelSuperProperties({'app_version': '1.2.3', 'platform': 'iOS'})
+  Future<void> registerMixpanelSuperProperties(Map<String, dynamic> properties) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.registerSuperProperties(properties);
+        if (result.isFailure) {
+          AppLogger.error('Failed to register super properties in Mixpanel: ${result.error}', tag: 'Mixpanel-Super');
+        }
+      }
+    }
+  }
+
+  /// Register super properties only once (won't overwrite existing values)
+  /// Useful for properties that should never change, like signup date or initial referrer
+  /// Example: registerMixpanelSuperPropertiesOnce({'signup_date': '2025-01-01', 'initial_referrer': 'google'})
+  Future<void> registerMixpanelSuperPropertiesOnce(Map<String, dynamic> properties) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.registerSuperPropertiesOnce(properties);
+        if (result.isFailure) {
+          AppLogger.error(
+            'Failed to register super properties once in Mixpanel: ${result.error}',
+            tag: 'Mixpanel-Super',
+          );
+        }
+      }
+    }
+  }
+
+  /// Remove a single super property from Mixpanel
+  /// Example: unregisterMixpanelSuperProperty('temporary_flag')
+  Future<void> unregisterMixpanelSuperProperty(String property) async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.unregisterSuperProperty(property);
+        if (result.isFailure) {
+          AppLogger.error('Failed to unregister super property in Mixpanel: ${result.error}', tag: 'Mixpanel-Super');
+        }
+      }
+    }
+  }
+
+  /// Clear all super properties from Mixpanel
+  /// This removes all super properties that were previously registered
+  Future<void> clearMixpanelSuperProperties() async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.clearSuperProperties();
+        if (result.isFailure) {
+          AppLogger.error('Failed to clear super properties in Mixpanel: ${result.error}', tag: 'Mixpanel-Super');
+        }
+      }
+    }
+  }
+
+  /// Get current super properties from Mixpanel
+  /// Returns a Map of all currently registered super properties
+  Future<Map<String, dynamic>> getMixpanelSuperProperties() async {
+    for (final analytics in _analyticsServices) {
+      if (analytics is MixpanelAnalyticsService) {
+        final result = await analytics.getSuperProperties();
+        if (result.isSuccess) {
+          return result.data;
+        } else {
+          AppLogger.error('Failed to get super properties from Mixpanel: ${result.error}', tag: 'Mixpanel-Super');
+        }
+      }
+    }
+    return {};
+  }
+
   // Revenue Methods
   Future<Result<List<Product>>> getProducts(List<String> productIds) async {
     return await _revenueService?.getProducts(productIds) ?? const Success([]);

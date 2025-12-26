@@ -214,4 +214,76 @@ class MixpanelAnalyticsService implements AnalyticsService {
       AppLogger.info('Mixpanel instance reset successfully', tag: 'Mixpanel-People');
     });
   }
+
+  // MARK: - Mixpanel Super Properties Methods
+
+  /// Register super properties that will be sent with every event
+  /// Super properties are properties that are automatically included in all events
+  /// They persist across app sessions until explicitly cleared
+  Future<Result<void>> registerSuperProperties(Map<String, dynamic> properties) async {
+    if (_mixpanel == null) {
+      return const Failure(ServiceNotInitializedException('MixpanelAnalyticsService'));
+    }
+
+    return resultOfAsync(() async {
+      AppLogger.info('Registering super properties: ${properties.keys.join(', ')}', tag: 'Mixpanel-Super');
+      _mixpanel!.registerSuperProperties(properties);
+      AppLogger.info('Super properties registered successfully', tag: 'Mixpanel-Super');
+    });
+  }
+
+  /// Register super properties only once (won't overwrite existing values)
+  /// Useful for properties that should never change, like signup date or initial referrer
+  Future<Result<void>> registerSuperPropertiesOnce(Map<String, dynamic> properties) async {
+    if (_mixpanel == null) {
+      return const Failure(ServiceNotInitializedException('MixpanelAnalyticsService'));
+    }
+
+    return resultOfAsync(() async {
+      AppLogger.info('Registering super properties once: ${properties.keys.join(', ')}', tag: 'Mixpanel-Super');
+      _mixpanel!.registerSuperPropertiesOnce(properties);
+      AppLogger.info('Super properties registered once successfully', tag: 'Mixpanel-Super');
+    });
+  }
+
+  /// Remove a single super property
+  Future<Result<void>> unregisterSuperProperty(String property) async {
+    if (_mixpanel == null) {
+      return const Failure(ServiceNotInitializedException('MixpanelAnalyticsService'));
+    }
+
+    return resultOfAsync(() async {
+      AppLogger.info('Unregistering super property: $property', tag: 'Mixpanel-Super');
+      _mixpanel!.unregisterSuperProperty(property);
+      AppLogger.info('Super property unregistered successfully', tag: 'Mixpanel-Super');
+    });
+  }
+
+  /// Clear all super properties
+  Future<Result<void>> clearSuperProperties() async {
+    if (_mixpanel == null) {
+      return const Failure(ServiceNotInitializedException('MixpanelAnalyticsService'));
+    }
+
+    return resultOfAsync(() async {
+      AppLogger.info('Clearing all super properties', tag: 'Mixpanel-Super');
+      _mixpanel!.clearSuperProperties();
+      AppLogger.info('All super properties cleared successfully', tag: 'Mixpanel-Super');
+    });
+  }
+
+  /// Get current super properties
+  Future<Result<Map<String, dynamic>>> getSuperProperties() async {
+    if (_mixpanel == null) {
+      return const Failure(ServiceNotInitializedException('MixpanelAnalyticsService'));
+    }
+
+    return resultOfAsync(() async {
+      AppLogger.info('Getting super properties', tag: 'Mixpanel-Super');
+      final properties = await _mixpanel!.getSuperProperties();
+      final typedProperties = Map<String, dynamic>.from(properties ?? {});
+      AppLogger.info('Retrieved ${typedProperties.length} super properties', tag: 'Mixpanel-Super');
+      return typedProperties;
+    });
+  }
 }
