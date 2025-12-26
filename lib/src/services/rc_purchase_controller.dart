@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:superwallkit_flutter/superwallkit_flutter.dart' hide LogLevel, StoreProduct;
+import 'package:superwallkit_flutter/superwallkit_flutter.dart' hide LogLevel, StoreProduct, CustomerInfo;
 import 'package:tangent_sdk/src/core/model/product.dart' as product;
 import 'package:tangent_sdk/src/core/utils/app_logger.dart' as app_logger;
 
