@@ -51,7 +51,7 @@ class MixpanelAnalyticsService implements AnalyticsService {
       AppLogger.info('sending event to mixPanel: $eventName');
       await _mixpanel!.track(
         eventName,
-        properties: {if (properties != null) ...properties, 'tangent_sdk_version': '0.0.15'},
+        properties: {if (properties != null) ...properties, 'tangent_sdk_version': '0.0.17'},
       );
       AppLogger.info('Successfully event sent to mixPanel: $eventName');
     });

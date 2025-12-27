@@ -5,31 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.17] - 2025-12-27
 
-### Added
+### Updated
 
-- ...
-
-### Changed
-
-- ...
-
-### Fixed
-
-- ...
-
-### Deprecated
-
-- ...
-
-### Removed
-
-- ...
-
-### Security
-
-- ...
+- Updated FlutterFire dependencies to latest versions:
+    - `firebase_core: ^4.3.0`
+    - `firebase_crashlytics: ^5.0.6`
+    - `firebase_app_check: ^0.4.1+3`
+- Updated analytics dependencies:
+    - `mixpanel_flutter: ^2.4.4`
+    - `adjust_sdk: ^5.5.0`
+- Updated Superwall dependency:
+    - `superwallkit_flutter: ^2.4.6`
 
 ## [0.0.16] - 2025-11-27
 
