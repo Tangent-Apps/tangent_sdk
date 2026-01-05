@@ -1,4 +1,5 @@
 import 'package:adjust_sdk/adjust.dart';
+import 'package:adjust_sdk/adjust_attribution.dart';
 import 'package:adjust_sdk/adjust_config.dart';
 import 'package:adjust_sdk/adjust_event.dart';
 import 'package:flutter/foundation.dart';
@@ -104,5 +105,45 @@ class AdjustAnalyticsService implements AnalyticsService {
     Map<String, Object>? properties,
   }) {
     return resultOfAsync(() async {});
+  }
+
+  /// Get the Adjust attribution ID
+  Future<String?> getAdjustId() async {
+    try {
+      return await Adjust.getAdid();
+    } catch (e) {
+      debugPrint('Failed to get Adjust ID: $e');
+      return null;
+    }
+  }
+
+  /// Get the iOS Advertising Identifier (IDFA)
+  Future<String?> getIdfa() async {
+    try {
+      return await Adjust.getIdfa();
+    } catch (e) {
+      debugPrint('Failed to get IDFA: $e');
+      return null;
+    }
+  }
+
+  /// Get the iOS Vendor Identifier (IDFV)
+  Future<String?> getIdfv() async {
+    try {
+      return await Adjust.getIdfv();
+    } catch (e) {
+      debugPrint('Failed to get IDFV: $e');
+      return null;
+    }
+  }
+
+  /// Get the Adjust attribution data
+  Future<AdjustAttribution?> getAttribution() async {
+    try {
+      return await Adjust.getAttribution();
+    } catch (e) {
+      debugPrint('Failed to get Adjust attribution: $e');
+      return null;
+    }
   }
 }

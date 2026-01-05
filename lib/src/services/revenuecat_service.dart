@@ -1,5 +1,7 @@
+// src/services/revenuecat_service.dart
 import 'dart:async';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' as service;
 import 'package:meta/meta.dart';
@@ -11,16 +13,24 @@ import 'package:tangent_sdk/src/core/model/entitlement.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
+import 'package:tangent_sdk/src/services/adjust_analytics_service.dart';
+import 'package:tangent_sdk/src/services/device_identifier_service.dart';
 
-import '../core/exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 
 @immutable
 class RevenueCatService extends PurchasesService {
   final String apiKey;
+  final bool enableAdjustIntegration;
+  final bool enableFirebaseIntegration;
   final StreamController<CustomerPurchasesInfo> _customerPurchasesInfoController =
       StreamController<CustomerPurchasesInfo>.broadcast();
 
-  RevenueCatService(this.apiKey) {
+  RevenueCatService(
+    this.apiKey, {
+    required this.enableAdjustIntegration,
+    required this.enableFirebaseIntegration,
+  }) {
     if (apiKey.trim().isEmpty) {
       throw const ValidationException('apiKey', 'Cannot be empty');
     }
@@ -38,6 +48,47 @@ class RevenueCatService extends PurchasesService {
         }
       });
     }).mapErrorAsync((error) => ServiceOperationException('RevenueCat initialization', error.originalError));
+  }
+
+  /// Sets up the RevenueCat-Adjust integration by collecting and setting device identifiers.
+  ///
+  /// This method should be called after both RevenueCat and Adjust are initialized.
+  /// It collects device identifiers (Adjust ID, IDFA, GPS AdId, IDFV) and sets them
+  /// as subscriber attributes in RevenueCat for precise revenue attribution.
+  ///
+  /// Returns a Map of successfully collected identifiers.
+  Future<Map<String, String>> setupAdjustIntegration({required AdjustAnalyticsService adjustAnalyticsService}) async {
+    if (!enableAdjustIntegration) return {};
+
+    final deviceIdentifierService = DeviceIdentifierService(adjustAnalyticsService);
+    return await deviceIdentifierService.collectAndSetIdentifiers();
+  }
+
+  /// Sets up the RevenueCat-Firebase Analytics integration by setting the Firebase App Instance ID.
+  ///
+  /// This method should be called after both Firebase and RevenueCat are initialized.
+  /// It retrieves the Firebase App Instance ID and sets it as a subscriber attribute
+  /// in RevenueCat, enabling RevenueCat to send subscriber lifecycle events to Google Analytics.
+  ///
+  /// Returns the Firebase App Instance ID if successfully set, null otherwise.
+  Future<String?> setupFirebaseIntegration() async {
+    if (!enableFirebaseIntegration) return null;
+
+    try {
+      final firebaseAnalytics = FirebaseAnalytics.instance;
+      final appInstanceId = await firebaseAnalytics.appInstanceId;
+
+      if (appInstanceId == null || appInstanceId.isEmpty) {
+        return null;
+      }
+
+      // Set the Firebase App Instance ID as a subscriber attribute in RevenueCat
+      await Purchases.setFirebaseAppInstanceId(appInstanceId);
+      return appInstanceId;
+    } catch (e) {
+      // Silently fail if Firebase Analytics is not available
+      return null;
+    }
   }
 
   @override

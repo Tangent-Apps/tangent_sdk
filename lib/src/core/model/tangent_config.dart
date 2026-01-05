@@ -1,3 +1,4 @@
+// src/core/model/tangent_config.dart
 import 'package:meta/meta.dart';
 import 'package:tangent_sdk/src/core/enum/tangent_environment.dart';
 
@@ -42,6 +43,94 @@ class TangentConfig {
 
   final String? adjustConsumableToken;
 
+  /// Controls whether RevenueCat-Adjust integration is enabled for precise revenue attribution.
+  ///
+  /// When `true` (default): The SDK automatically collects device identifiers (Adjust ID, IDFA, GPS AdId, IDFV)
+  /// and sets them as subscriber attributes in RevenueCat. This enables accurate revenue tracking
+  /// and attribution in Adjust for purchases made through RevenueCat.
+  ///
+  /// When `false`: Device identifiers are not collected or set in RevenueCat.
+  ///
+  /// **Requirements:**
+  /// - Both `enableAnalytics` and `enableRevenue` must be `true`
+  /// - `adjustAppToken` and `revenueCatApiKey` must be configured
+  ///
+  /// **How it works:**
+  /// 1. After Adjust and RevenueCat are initialized, device identifiers are collected
+  /// 2. Identifiers are automatically set as subscriber attributes in RevenueCat
+  /// 3. RevenueCat forwards purchase events to Adjust with proper attribution
+  /// 4. Revenue appears in Adjust dashboard with accurate campaign attribution
+  ///
+  /// **Note:** This integration is separate from the automatic subscription tracking
+  /// (`automaticTrackSubscription`). This setting enables RevenueCat to send events
+  /// directly to Adjust via server-to-server integration, while `automaticTrackSubscription`
+  /// controls client-side event tracking.
+  ///
+  /// Reference: https://www.revenuecat.com/docs/integrations/attribution/adjust
+  ///
+  /// Defaults to `true`.
+  final bool enableRevenueCatAdjustIntegration;
+
+  /// Controls whether RevenueCat-Firebase Analytics integration is enabled.
+  ///
+  /// When `true`: The SDK automatically sets the Firebase App Instance ID
+  /// as a subscriber attribute in RevenueCat. This enables RevenueCat to send
+  /// subscriber lifecycle events to Google Analytics.
+  ///
+  /// When `false`: Firebase App Instance ID is not set in RevenueCat.
+  ///
+  /// **Requirements:**
+  /// - `enableRevenue` must be `true`
+  /// - `revenueCatApiKey` must be configured
+  /// - Firebase must be initialized (via `firebaseOptions` in SDK initialization)
+  ///
+  /// **How it works:**
+  /// 1. After Firebase and RevenueCat are initialized, the Firebase App Instance ID is retrieved
+  /// 2. The App Instance ID is automatically set as a subscriber attribute in RevenueCat
+  /// 3. RevenueCat forwards subscriber lifecycle events to Google Analytics
+  /// 4. Events appear in Google Analytics dashboard with proper attribution
+  ///
+  /// **Note:** You must also enable the Firebase integration from the RevenueCat dashboard
+  /// under Project Settings > Integrations > Firebase.
+  ///
+  /// Reference: https://www.revenuecat.com/docs/integrations/attribution/firebase-integration
+  ///
+  /// Defaults to `false`.
+  final bool enableRevenueCatFirebaseIntegration;
+
+  /// Controls whether RevenueCat customer data is automatically synced to Mixpanel People.
+  ///
+  /// When `true` (default): The SDK automatically syncs RevenueCat customer data to Mixpanel People
+  /// as user profile properties. This happens:
+  /// - Initially after RevenueCat initialization
+  /// - After user login via `logIn()`
+  /// - After successful purchases via `purchaseProduct()` or `purchaseProductById()`
+  /// - After restore purchases via `restorePurchases()`
+  ///
+  /// When `false`: No automatic syncing occurs. You can still manually call `syncRevenueCatToMixpanel()`.
+  ///
+  /// **What gets synced:**
+  /// - `rc_user_id` - RevenueCat user identifier
+  /// - `rc_has_active_subscription` - Boolean subscription status
+  /// - `rc_active_subscriptions` - Array of active product IDs
+  /// - `rc_active_entitlements` - Array of active entitlement IDs
+  /// - `rc_entitlement_count` - Number of active entitlements
+  /// - `rc_management_url` - Subscription management URL
+  ///
+  /// **Requirements:**
+  /// - `mixpanelToken` must be configured
+  /// - `enableRevenue` must be `true`
+  /// - `revenueCatApiKey` must be configured
+  ///
+  /// **Note:** This is complementary to RevenueCat's server-to-server Mixpanel integration:
+  /// - Server integration sends subscription **events** (trial_started, renewal, etc.)
+  /// - Client integration sets user **profile properties** (current subscription state)
+  ///
+  /// Both integrations serve different purposes and can be used together for comprehensive tracking.
+  ///
+  /// Defaults to `true`.
+  final bool enableMixpanelRevenueCatSync;
+
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
@@ -59,5 +148,8 @@ class TangentConfig {
     this.superwallAndroidApiKey,
     this.enableAppTrackingTransparency = true,
     this.adjustConsumableToken,
+    this.enableRevenueCatAdjustIntegration = true,
+    this.enableRevenueCatFirebaseIntegration = false,
+    this.enableMixpanelRevenueCatSync = true,
   });
 }

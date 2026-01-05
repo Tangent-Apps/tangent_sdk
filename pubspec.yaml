@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
 
   # Firebase
+  firebase_analytics: ^12.0.0
   firebase_core: ^4.3.0
   firebase_crashlytics: ^5.0.6
   firebase_app_check: ^0.4.1+3
