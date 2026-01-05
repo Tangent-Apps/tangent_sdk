@@ -31,6 +31,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [0.0.18] - 2026-01-05
+
+### Updated
+
+- Updated dependencies to their latest versions:
+    - `purchases_flutter: ^8.10.6`
+    - `adjust_sdk: ^5.5.0`
+    - `mixpanel_flutter: ^2.4.4`
+    - `superwallkit_flutter: ^2.4.4`
+    - `firebase_core: ^4.3.0`
+    - `firebase_crashlytics: ^5.0.6`
+    - `firebase_app_check: ^0.4.1+3`
+    - `firebase_analytics: ^12.0.0`
+
 ## [0.0.16] - 2025-11-27
 
 ### Added
