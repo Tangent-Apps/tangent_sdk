@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart' as flutter;
 import 'package:purchases_flutter/errors.dart';
 
-import '../enum/purchase_failure_code.dart';
-import '../exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/enum/purchase_failure_code.dart';
+import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 
 class PurchaseErrorHelper {
   static PurchaseException getAppropriateException({

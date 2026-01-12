@@ -41,19 +41,17 @@ class ServiceOperationException extends TangentSDKException {
 
 @immutable
 class ConfigurationException extends TangentSDKException {
-  const ConfigurationException(String message, {String? code}) : super(message, code: code);
+  const ConfigurationException(super.message, {super.code});
 }
 
 @immutable
 class NetworkException extends TangentSDKException {
-  const NetworkException(String message, {String? code, dynamic originalError})
-    : super(message, code: code, originalError: originalError);
+  const NetworkException(super.message, {super.code, super.originalError});
 }
 
 @immutable
 class PlatformException extends TangentSDKException {
-  const PlatformException(String message, {String? code, dynamic originalError})
-    : super(message, code: code, originalError: originalError);
+  const PlatformException(super.message, {super.code, super.originalError});
 }
 
 @immutable
@@ -99,7 +97,7 @@ class RateLimitException extends TangentSDKException {
 
 @immutable
 class AuthenticationException extends TangentSDKException {
-  const AuthenticationException(String message, {String? code}) : super(message, code: code);
+  const AuthenticationException(super.message, {super.code});
 }
 
 @immutable

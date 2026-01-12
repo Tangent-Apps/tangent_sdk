@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_flutter/purchases_flutter.dart' hide PurchaseResult;
+import 'package:purchases_flutter/purchases_flutter.dart' as rc show PurchaseResult;
 import 'package:superwallkit_flutter/superwallkit_flutter.dart' hide LogLevel, StoreProduct, CustomerInfo;
 import 'package:tangent_sdk/src/core/model/product.dart' as product;
 import 'package:tangent_sdk/src/core/utils/app_logger.dart' as app_logger;
@@ -123,7 +124,9 @@ class RCPurchaseController extends PurchaseController {
   // MARK: Subscriptions
   Future<PurchaseResult> _purchaseSubscriptionProduct(StoreProduct storeProduct) async {
     try {
-      final customerInfo = await Purchases.purchaseStoreProduct(storeProduct);
+      // ignore: deprecated_member_use
+      final rc.PurchaseResult result = await Purchases.purchaseStoreProduct(storeProduct);
+      final CustomerInfo customerInfo = result.customerInfo;
       if (customerInfo.hasActiveEntitlementOrSubscription()) {
         final product = _storeProductToProduct(storeProduct);
         _onSubscriptionPurchaseCompleted(product);
@@ -141,7 +144,9 @@ class RCPurchaseController extends PurchaseController {
 
   Future<PurchaseResult> _purchaseSubscriptionOption(SubscriptionOption subscriptionOption) async {
     try {
-      final customerInfo = await Purchases.purchaseSubscriptionOption(subscriptionOption);
+      // ignore: deprecated_member_use
+      final rc.PurchaseResult result = await Purchases.purchaseSubscriptionOption(subscriptionOption);
+      final CustomerInfo customerInfo = result.customerInfo;
       if (customerInfo.hasActiveEntitlementOrSubscription()) {
         final product = await _subscriptionOptionToProduct(subscriptionOption);
         _onSubscriptionPurchaseCompleted(product);
@@ -160,11 +165,13 @@ class RCPurchaseController extends PurchaseController {
   // MARK: Consumables (coins)
   Future<PurchaseResult> _purchaseConsumableProduct(StoreProduct storeProduct) async {
     try {
-      await Purchases.purchaseStoreProduct(storeProduct);
+      // ignore: unused_local_variable, deprecated_member_use
+      final rc.PurchaseResult result = await Purchases.purchaseStoreProduct(storeProduct);
       final product = _storeProductToProduct(storeProduct);
       _onConsumablePurchaseCompleted(product);
 
       // ✅ If we get here without an exception, the purchase was validated by Apple/Google via RevenueCat
+      // result.customerInfo and result.storeTransaction available if needed
 
       return PurchaseResult.purchased;
     } on PlatformException catch (e) {

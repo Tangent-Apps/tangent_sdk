@@ -1,5 +1,5 @@
 import 'package:meta/meta.dart';
-import '../exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 
 @immutable
 sealed class Result<T> {
@@ -118,6 +118,7 @@ sealed class Result<T> {
 final class Success<T> extends Result<T> {
   const Success(this.data);
 
+  @override
   final T data;
 
   @override
@@ -136,6 +137,7 @@ final class Success<T> extends Result<T> {
 final class Failure<T> extends Result<T> {
   const Failure(this.error);
 
+  @override
   final TangentSDKException error;
 
   @override

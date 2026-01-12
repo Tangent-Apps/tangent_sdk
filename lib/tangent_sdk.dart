@@ -1,4 +1,4 @@
-library tangent_sdk;
+library;
 
 export 'package:app_tracking_transparency/app_tracking_transparency.dart' show TrackingStatus;
 export 'package:tangent_sdk/src/core/model/constants.dart';

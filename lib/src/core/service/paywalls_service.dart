@@ -1,8 +1,5 @@
-import 'package:flutter/cupertino.dart';
-import 'package:meta/meta.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
 
-@immutable
 abstract class PaywallsService {
   const PaywallsService();
 

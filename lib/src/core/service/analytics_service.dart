@@ -1,7 +1,5 @@
-import 'package:meta/meta.dart';
-import '../types/result.dart';
+import 'package:tangent_sdk/src/core/types/result.dart';
 
-@immutable
 abstract class AnalyticsService {
   const AnalyticsService();
 

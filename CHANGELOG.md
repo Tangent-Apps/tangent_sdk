@@ -7,29 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.19] - 2026-01-09
+
+### Breaking Changes
+
+- **Flutter SDK Requirement**: Updated minimum Flutter SDK from `>=1.17.0` to `>=3.22.0`
+- **purchases_flutter v9**: Upgraded from `^8.10.6` to `^9.10.4` with breaking API changes handled internally
+
 ### Added
 
-- ...
+- **Enhanced CustomerPurchasesInfo Model**: New fields for comprehensive purchase tracking
+    - `firstSeen` - When the customer was first seen by RevenueCat (user acquisition date)
+    - `allPurchasedProductIds` - Set of all product IDs ever purchased by the customer
+    - `nonSubscriptionTransactions` - List of consumable/one-time purchase history
+
+- **NonSubscriptionTransaction Model**: New model for tracking non-subscription purchases
+    - `transactionId` - Unique transaction identifier
+    - `productId` - The product identifier
+    - `purchaseDate` - When the purchase was made
 
 ### Changed
 
-- ...
+- **Dependency Updates**:
+    - `purchases_flutter: ^9.10.4` (from ^8.10.6) - Major version upgrade with Google Play Billing Library 8
+    - `superwallkit_flutter: ^2.4.6` (from ^2.4.4) - Added `isActive` on SubscriptionStatus
+
+- **Internal API Changes**:
+    - Purchase methods now handle `PurchaseResult` return type from RevenueCat v9
+    - Resolved naming conflict between Superwall and RevenueCat `PurchaseResult` classes
 
 ### Fixed
 
-- ...
+- Fixed 28 code quality issues including:
+    - Package import consistency (`always_use_package_imports`)
+    - Super parameters in exception constructors
+    - Missing `@override` annotations
+    - End-of-file newlines
+    - Removed unnecessary `@immutable` annotations from abstract service classes
 
-### Deprecated
+### Examples
 
-- ...
+```dart
+// Access new CustomerPurchasesInfo fields
+TangentSDK.instance.customerPurchasesInfoStream.listen((info) {
+  // User acquisition date
+  print('First seen: ${info.firstSeen}');
 
-### Removed
+  // All products ever purchased
+  print('Purchased products: ${info.allPurchasedProductIds}');
 
-- ...
-
-### Security
-
-- ...
+  // Consumable purchase history
+  for (final tx in info.nonSubscriptionTransactions) {
+    print('Consumable: ${tx.productId} on ${tx.purchaseDate}');
+  }
+});
+```
 
 ## [0.0.18] - 2026-01-05
 
