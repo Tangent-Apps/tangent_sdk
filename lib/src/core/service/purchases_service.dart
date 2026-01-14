@@ -4,7 +4,7 @@ import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 import 'package:tangent_sdk/src/core/model/entitlement.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 
-import '../types/result.dart';
+import 'package:tangent_sdk/src/core/types/result.dart';
 
 @immutable
 abstract class PurchasesService {

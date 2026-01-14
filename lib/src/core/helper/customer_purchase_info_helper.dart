@@ -1,4 +1,4 @@
-import 'package:purchases_flutter/models/customer_info_wrapper.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:tangent_sdk/src/core/model/customer_purchases_info.dart';
 
 class CustomerPurchaseInfoHelper {
@@ -19,6 +19,15 @@ class CustomerPurchaseInfoHelper {
       );
     });
 
+    // Map non-subscription transactions
+    final nonSubTransactions = customerInfo.nonSubscriptionTransactions.map((transaction) {
+      return NonSubscriptionTransaction(
+        transactionId: transaction.transactionIdentifier,
+        productId: transaction.productIdentifier,
+        purchaseDate: DateTime.tryParse(transaction.purchaseDate) ?? DateTime.now(),
+      );
+    }).toList();
+
     return CustomerPurchasesInfo(
       hasActiveSubscription: customerInfo.activeSubscriptions.isNotEmpty,
       originalPurchaseDate:
@@ -28,6 +37,9 @@ class CustomerPurchaseInfoHelper {
       purchases: subs,
       originalAppUserId: customerInfo.originalAppUserId,
       managementURL: customerInfo.managementURL,
+      firstSeen: DateTime.tryParse(customerInfo.firstSeen),
+      allPurchasedProductIds: customerInfo.allPurchasedProductIdentifiers.toSet(),
+      nonSubscriptionTransactions: nonSubTransactions,
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:tangent_sdk/src/core/service/crash_reporting_service.dart';
-import '../core/types/result.dart';
+import 'package:tangent_sdk/src/core/types/result.dart';
 
 @immutable
 class FirebaseCrashReportingService implements CrashReportingService {

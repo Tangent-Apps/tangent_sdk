@@ -134,8 +134,9 @@ class RevenueCatService extends PurchasesService {
         }
 
         final storeProduct = targetPackage.first;
-        final customerInfo = await Purchases.purchaseStoreProduct(storeProduct);
-        final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
+        // ignore: deprecated_member_use
+        final PurchaseResult result = await Purchases.purchaseStoreProduct(storeProduct);
+        final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(result.customerInfo);
         _customerPurchasesInfoController.add(customerPurchasesInfo);
 
         return Product(
@@ -158,8 +159,9 @@ class RevenueCatService extends PurchasesService {
   @override
   Future<Result<CustomerPurchasesInfo>> purchaseProduct(Product product) async {
     try {
-      final customerInfo = await Purchases.purchaseStoreProduct(product.storeProduct);
-      final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(customerInfo);
+      // ignore: deprecated_member_use
+      final PurchaseResult result = await Purchases.purchaseStoreProduct(product.storeProduct);
+      final customerPurchasesInfo = CustomerPurchaseInfoHelper.fromRevenueCat(result.customerInfo);
       _customerPurchasesInfoController.add(customerPurchasesInfo);
       return Success(customerPurchasesInfo);
     } on service.PlatformException catch (e) {

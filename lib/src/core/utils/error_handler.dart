@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 
-import '../exceptions/tangent_sdk_exception.dart';
-import '../types/result.dart';
+import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/types/result.dart';
 
 @immutable
 class ErrorHandler {
