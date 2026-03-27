@@ -306,6 +306,9 @@ class RevenueCatService extends PurchasesService {
             expirationDate: info.expirationDate != null ? DateTime.tryParse(info.expirationDate!) : null,
             willRenew: info.willRenew,
             isSandbox: info.isSandbox,
+            billingIssueDetectedAt: info.billingIssueDetectedAt != null
+                ? DateTime.tryParse(info.billingIssueDetectedAt!)
+                : null,
           ),
         );
       });

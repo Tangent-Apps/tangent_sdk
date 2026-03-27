@@ -25,6 +25,15 @@ class CustomerPurchasesInfo {
   /// All non-subscription purchases (consumables, one-time purchases)
   final List<NonSubscriptionTransaction> nonSubscriptionTransactions;
 
+  /// Whether any active purchase has a billing issue (failed payment in grace/retry period)
+  bool get hasBillingIssue => purchases.any((p) => p.isActive && p.billingIssueDetectedAt != null);
+
+  /// The earliest billing issue detection date among active purchases, if any
+  DateTime? get billingIssueDetectedAt => purchases
+      .where((p) => p.isActive && p.billingIssueDetectedAt != null)
+      .map((p) => p.billingIssueDetectedAt)
+      .firstOrNull;
+
   const CustomerPurchasesInfo({
     required this.hasActiveSubscription,
     this.originalPurchaseDate,
@@ -82,6 +91,9 @@ class CustomerPurchaseInfo {
   /// The identifier for this entitlement
   final String? entitlementId;
 
+  /// When a billing issue was detected (e.g. failed payment during grace/retry period)
+  final DateTime? billingIssueDetectedAt;
+
   CustomerPurchaseInfo({
     required this.productId,
     this.originalPurchaseDate,
@@ -91,11 +103,12 @@ class CustomerPurchaseInfo {
     required this.isActive,
     required this.isSandbox,
     required this.willRenew,
+    this.billingIssueDetectedAt,
   });
 
   @override
   String toString() {
-    return 'CustomerPurchaseInfo(productId: $productId, originalPurchaseDate: $originalPurchaseDate, latestPurchaseDate: $latestPurchaseDate, expirationDate: $expirationDate, isActive: $isActive, isSandbox: $isSandbox, willRenew: $willRenew)';
+    return 'CustomerPurchaseInfo(productId: $productId, originalPurchaseDate: $originalPurchaseDate, latestPurchaseDate: $latestPurchaseDate, expirationDate: $expirationDate, isActive: $isActive, isSandbox: $isSandbox, willRenew: $willRenew, billingIssueDetectedAt: $billingIssueDetectedAt)';
   }
 }
 

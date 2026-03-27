@@ -23,6 +23,9 @@ class Entitlement {
   /// Whether this entitlement is from a sandbox environment
   final bool isSandbox;
 
+  /// When a billing issue was detected (e.g. failed payment during grace/retry period)
+  final DateTime? billingIssueDetectedAt;
+
   const Entitlement({
     required this.identifier,
     required this.productIdentifier,
@@ -32,6 +35,7 @@ class Entitlement {
     this.expirationDate,
     required this.willRenew,
     required this.isSandbox,
+    this.billingIssueDetectedAt,
   });
 
   @override
@@ -44,7 +48,8 @@ class Entitlement {
         '  latestPurchaseDate: $latestPurchaseDate,\n'
         '  expirationDate: $expirationDate,\n'
         '  willRenew: $willRenew,\n'
-        '  isSandbox: $isSandbox\n'
+        '  isSandbox: $isSandbox,\n'
+        '  billingIssueDetectedAt: $billingIssueDetectedAt\n'
         ')';
   }
 
@@ -58,6 +63,7 @@ class Entitlement {
     DateTime? expirationDate,
     bool? willRenew,
     bool? isSandbox,
+    DateTime? billingIssueDetectedAt,
   }) {
     return Entitlement(
       identifier: identifier ?? this.identifier,
@@ -68,6 +74,7 @@ class Entitlement {
       expirationDate: expirationDate ?? this.expirationDate,
       willRenew: willRenew ?? this.willRenew,
       isSandbox: isSandbox ?? this.isSandbox,
+      billingIssueDetectedAt: billingIssueDetectedAt ?? this.billingIssueDetectedAt,
     );
   }
 }

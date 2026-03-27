@@ -15,6 +15,9 @@ class CustomerPurchaseInfoHelper {
           isSandbox: info.isSandbox,
           willRenew: info.willRenew,
           entitlementId: id,
+          billingIssueDetectedAt: info.billingIssueDetectedAt != null
+              ? DateTime.tryParse(info.billingIssueDetectedAt!)
+              : null,
         ),
       );
     });
