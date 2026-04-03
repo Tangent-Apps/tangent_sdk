@@ -1,3 +1,4 @@
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -10,15 +11,15 @@ class Product {
   final String currencyCode;
   final String? introductoryPrice;
   final Map<String, dynamic>? metadata;
-  final dynamic storeProduct;
+  final ProductDetails? productDetails;
   const Product({
     required this.id,
     required this.title,
     required this.description,
     required this.price,
     required this.currencyCode,
-    required this.storeProduct,
     required this.priceString,
+    this.productDetails,
     this.introductoryPrice,
     this.metadata,
   });

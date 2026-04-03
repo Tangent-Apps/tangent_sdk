@@ -22,4 +22,8 @@ abstract class PaywallsService {
   Future<Result<void>> setSubscriptionStatus({List<String> activeEntitlementIds = const []});
 
   Future<Result<void>> refreshSubscriptionStatus();
+
+  Future<Result<bool>> getSubscriptionStatus();
+
+  Stream<bool> get subscriptionStatusStream;
 }

@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-03
+
+### Breaking Changes
+
+- **Removed RevenueCat**: Replaced `purchases_flutter` with `in_app_purchase` for native in-app purchase management
+- **Superwall native mode**: Superwall no longer uses a `PurchaseController` (RevenueCat integration removed); it runs in native mode
+- **Removed `enableRevenue` config**: Revenue/purchase functionality is always available via `in_app_purchase`
+- **Removed `revenueCatApiKey` config**: No longer needed
+- **Removed `enableRevenueCatAdjustIntegration` config**: S2S integration with RevenueCat removed
+- **Changed `purchaseProduct()` return type**: Now returns `Result<Product>` instead of `Result<CustomerPurchasesInfo>`
+- **Removed `purchaseProductById()`**: Use `getProducts()` + `purchaseProduct()` instead
+- **Removed `getOfferings()` / `getOffering()`**: RevenueCat offerings API removed
+- **Removed `checkActiveSubscriptionToEntitlement()`**: Use Superwall subscription status instead
+- **Removed `logIn()`**: RevenueCat user auth removed
+- **Removed `getEntitlements()`**: RevenueCat entitlements API removed
+- **Removed `customerPurchasesInfoStream`**: Use `subscriptionStatusStream` (via Superwall) instead
+- **Removed `successPurchaseStream`**: Removed dedup stream; handle in purchase callback
+- **Removed `trackSuperwallPurchase()`**: Superwall handles purchases natively
+
+### Removed
+
+- `purchases_flutter` dependency
+- `PurchaseFailureCode` enum
+- `Purchase` model
+- `PurchasesService` abstract interface
+- `RevenueCatService` implementation
+- `RCPurchaseController` (Superwall-RevenueCat bridge)
+- `DeviceIdentifierService` (RevenueCat subscriber attributes)
+- `CustomerPurchaseInfoHelper` and `PurchaseErrorHelper`
+
+### Added
+
+- `in_app_purchase: ^3.2.0` dependency for native store purchases
+- `IAPPurchaseService` — new purchase service using `in_app_purchase`
+- `Product.productDetails` field to hold native `ProductDetails` for purchasing
+- `subscriptionStatusStream` — stream of subscription status via Superwall
+- `restorePurchases()` — now returns `Result<bool>` via `in_app_purchase`
+- `syncSubscriptionToMixpanel()` — sync subscription status to Mixpanel People
+- `enableMixpanelSubscriptionSync` config option
+
+### Changed
+
+- `checkActiveSubscription()` now queries Superwall subscription status instead of RevenueCat
+- Superwall configured without `PurchaseController` (native mode)
+- After successful purchase, SDK auto-syncs subscription status to Superwall and Mixpanel
+
 ## [0.1.1] - 2026-01-21
 
 ### Changed
