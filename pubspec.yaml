@@ -1,6 +1,6 @@
 name: tangent_sdk
-description: "A comprehensive SDK wrapper for Firebase, Mixpanel, Adjust, RevenueCat, and Superwall with unified analytics, crash reporting, and paywall management."
-version: 0.1.3
+description: "A comprehensive SDK wrapper for Firebase, Mixpanel, Adjust, and Superwall with unified analytics, crash reporting, and paywall management."
+version: 0.2.0
 homepage:
 
 environment:
@@ -21,8 +21,8 @@ dependencies:
   mixpanel_flutter: ^2.4.4
   adjust_sdk: ^5.5.0
 
-  # RevenueCat
-  purchases_flutter: ^9.10.8
+  # In-App Purchase
+  in_app_purchase: ^3.2.0
 
   # App Tracking Transparency
   app_tracking_transparency: ^2.0.6+1
@@ -34,7 +34,7 @@ dependencies:
   meta: ^1.11.0
 
   # Superwall
-  superwallkit_flutter: ^2.4.6
+  superwallkit_flutter: ^2.4.11
 
 dev_dependencies:
   flutter_test:

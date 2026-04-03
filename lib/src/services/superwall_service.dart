@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:superwallkit_flutter/superwallkit_flutter.dart';
@@ -5,25 +6,20 @@ import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 import 'package:tangent_sdk/src/core/service/paywalls_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
-import 'package:tangent_sdk/src/services/rc_purchase_controller.dart';
 
 const superwallTag = "Superwall💸";
 
 class SuperwallService extends PaywallsService {
   final String iOSApiKey;
   final String androidApiKey;
-  final String revenueCarUserId;
-  final PurchaseCallback onSubscriptionPurchaseCompleted;
-  final PurchaseCallback onConsumablePurchaseCompleted;
 
   bool _isInitialized = false;
 
+  final StreamController<bool> _subscriptionStatusController = StreamController<bool>.broadcast();
+
   SuperwallService({
-    required this.revenueCarUserId,
     required this.iOSApiKey,
     required this.androidApiKey,
-    required this.onSubscriptionPurchaseCompleted,
-    required this.onConsumablePurchaseCompleted,
   });
 
   @override
@@ -44,27 +40,16 @@ class SuperwallService extends PaywallsService {
 
       AppLogger.info('Initializing Superwall with ${Platform.isIOS ? 'iOS' : 'Android'} API key', tag: superwallTag);
 
-      // 1) Configure
-      // Set a callback to be notified when a purchase is completed through Superwall
-      final RCPurchaseController purchaseController = RCPurchaseController(
-        onSubscriptionPurchaseCompleted,
-        onConsumablePurchaseCompleted,
-      );
+      // Configure Superwall in native mode (no PurchaseController)
       Superwall.configure(
         apiKey,
-        purchaseController: purchaseController,
         completion: () {
           AppLogger.info('Superwall configuration completed', tag: superwallTag);
         },
       );
       _isInitialized = true;
 
-      // 2) Identify with the SAME id as RevenueCat
-      await identifyUser(revenueCarUserId);
-      AppLogger.info('Identify with the SAME id as RevenueCat', tag: superwallTag);
-
-      // 3) Configure And Sync Subscription Status && Get Subscription Status
-      await purchaseController.configureAndSyncSubscriptionStatus();
+      // Log initial subscription status
       Superwall.shared.getSubscriptionStatus().then((status) {
         AppLogger.info('Superwall subscription status: $status', tag: superwallTag);
       });
@@ -84,7 +69,6 @@ class SuperwallService extends PaywallsService {
 
       AppLogger.debug('Registering placement: $placement', tag: superwallTag);
 
-      // Register the placement with default parameters
       await Superwall.shared.registerPlacement(placement, params: params, feature: feature);
 
       return const Success(null);
@@ -115,7 +99,6 @@ class SuperwallService extends PaywallsService {
       _ensureInitialized();
 
       AppLogger.debug('Setting user attributes', tag: superwallTag);
-      // Convert dynamic values to Object
       final Map<String, Object> convertedAttributes = {};
       attributes.forEach((key, value) {
         if (value != null) {
@@ -208,10 +191,12 @@ class SuperwallService extends PaywallsService {
       if (activeEntitlementIds.isNotEmpty) {
         final entitlements = activeEntitlementIds.map((id) => Entitlement(id: id)).toSet();
         await Superwall.shared.setSubscriptionStatus(SubscriptionStatusActive(entitlements: entitlements));
+        _subscriptionStatusController.add(true);
       } else {
         await Superwall.shared.setSubscriptionStatus(SubscriptionStatusInactive());
+        _subscriptionStatusController.add(false);
       }
-      AppLogger.info('Subscription status setting not fully implemented', tag: superwallTag);
+      AppLogger.info('Subscription status set successfully', tag: superwallTag);
 
       return const Success(null);
     } catch (e, stackTrace) {
@@ -226,8 +211,6 @@ class SuperwallService extends PaywallsService {
       _ensureInitialized();
 
       AppLogger.info('Refreshing subscription status', tag: superwallTag);
-      // Note: refreshSubscriptionStatus is not available in the current SDK version
-      // This is a placeholder for future implementation
       AppLogger.info('refreshSubscriptionStatus is not implemented in current SDK version', tag: superwallTag);
 
       return const Success(null);
@@ -236,6 +219,24 @@ class SuperwallService extends PaywallsService {
       return Failure(ServiceOperationException('refresh subscription status', e));
     }
   }
+
+  @override
+  Future<Result<bool>> getSubscriptionStatus() async {
+    try {
+      _ensureInitialized();
+
+      final status = await Superwall.shared.getSubscriptionStatus();
+      final isActive = status is SubscriptionStatusActive;
+      AppLogger.info('Subscription status: $isActive', tag: superwallTag);
+      return Success(isActive);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get subscription status', error: e, stackTrace: stackTrace, tag: superwallTag);
+      return Failure(ServiceOperationException('get subscription status', e));
+    }
+  }
+
+  @override
+  Stream<bool> get subscriptionStatusStream => _subscriptionStatusController.stream;
 
   void _ensureInitialized() {
     if (!_isInitialized) {

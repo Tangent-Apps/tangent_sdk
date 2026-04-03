@@ -1,5 +1,4 @@
 import 'package:meta/meta.dart';
-import 'package:tangent_sdk/tangent_sdk.dart';
 
 @immutable
 abstract class TangentSDKException implements Exception {
@@ -67,8 +66,8 @@ class AnalyticsException extends TangentSDKException {
 
 @immutable
 class PurchaseException extends TangentSDKException {
-  PurchaseException(String operation, {required PurchaseFailureCode code, dynamic originalError})
-    : super('Purchase operation failed: $operation', code: code.name, originalError: originalError);
+  const PurchaseException(String operation, {required String message, String? code, dynamic originalError})
+    : super('Purchase operation failed: $operation — $message', code: code, originalError: originalError);
 }
 
 @immutable

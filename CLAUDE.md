@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is the Tangent SDK - a comprehensive Flutter package that provides a unified wrapper for Firebase, Mixpanel, Adjust, RevenueCat, Superwall, App Tracking Transparency, and In-App Review services. The SDK simplifies integration of analytics, crash reporting, revenue management, paywall management, and app review functionality in Flutter applications.
+This is the Tangent SDK - a comprehensive Flutter package that provides a unified wrapper for Firebase, Mixpanel, Adjust, Superwall (native mode), `in_app_purchase`, App Tracking Transparency, and In-App Review services. The SDK simplifies integration of analytics, crash reporting, in-app purchases, paywall management, and app review functionality in Flutter applications.
 
 ## Development Commands
 
@@ -72,8 +72,8 @@ The SDK follows a service-oriented architecture with clear separation of concern
    - **Implementation Services** (`lib/src/services/`): Concrete implementations for each third-party SDK
      - `mixpanel_analytics_service.dart`: Mixpanel event tracking
      - `adjust_analytics_service.dart`: Adjust attribution and revenue tracking  
-     - `revenuecat_service.dart`: RevenueCat subscription management
-     - `superwall_service.dart`: Superwall paywall management
+     - `iap_purchase_service.dart`: In-app purchase management via `in_app_purchase`
+     - `superwall_service.dart`: Superwall paywall management (native mode, no PurchaseController)
      - `firebase_crash_reporting_service.dart`: Crashlytics integration
      - `firebase_app_check_service.dart`: App attestation
      - `app_tracking_transparency_service.dart`: iOS ATT handling
@@ -99,54 +99,26 @@ The SDK intelligently detects whether a purchase is a new subscription or a rene
 2. Looking for an `originalPurchaseDate` in prior purchases
 3. Routing to the appropriate Adjust event token (new vs renewal)
 
-### Superwall Revenue Tracking Integration
+### Superwall Integration (Native Mode)
 
-The SDK automatically handles Superwall purchase events and forwards them to Adjust for revenue tracking. When Superwall completes a purchase through its RevenueCat integration, the SDK automatically detects and tracks the event.
-
-#### Automatic Tracking (Recommended)
-The SDK automatically captures Superwall purchase events through the integrated `RCPurchaseController`:
-
-```dart
-// No additional code needed! 
-// The SDK automatically:
-// 1. Detects Superwall purchases through RevenueCat integration
-// 2. Determines if it's a new subscription or renewal
-// 3. Tracks revenue events to Adjust with proper attribution
-// 4. Uses the same event tokens as regular RevenueCat purchases
-```
-
-#### Manual Tracking (Alternative)
-If you need to manually track Superwall purchases (e.g., for custom integrations):
-
-```dart
-// Call this when you detect a Superwall transaction completion
-TangentSDK.instance.trackSuperwallPurchase(
-  productId: "your_product_id",
-  price: 9.99,
-  currencyCode: "USD",
-  // Optional: specify if it's a renewal (auto-detected if omitted)
-  isRenewal: false,
-  // Optional: specify custom event token (uses default tokens if omitted)
-  eventToken: "your_custom_token",
-);
-```
+Superwall runs in **native mode** — no `PurchaseController` or RevenueCat dependency. Superwall handles its own purchase flow natively. The SDK coordinates subscription status between Superwall and `in_app_purchase` by calling `setSubscriptionStatus()` after successful purchases.
 
 #### How it Works
-1. **Automatic Detection**: SDK automatically detects purchases through Superwall's RevenueCat integration
-2. **Revenue Tracking**: Purchase events are automatically forwarded to Adjust with proper revenue attribution
-3. **Renewal Detection**: The SDK automatically detects if it's a new subscription or renewal based on purchase history
-4. **Event Routing**: Uses `adjustSubscriptionToken` for new subscriptions, `adjustSubscriptionRenewalToken` for renewals
-5. **Adjust Integration**: Revenue data appears in Adjust dashboard with correct attribution
+1. **Paywall Display**: Superwall shows paywalls via `superwallRegisterPlacement()`
+2. **Purchase Flow**: Purchases go through `purchaseProduct()` using `in_app_purchase`
+3. **Subscription Sync**: After a successful purchase, the SDK sets Superwall subscription status to active
+4. **Revenue Tracking**: Purchase events are forwarded to Adjust with proper revenue attribution
+5. **Mixpanel Sync**: Subscription status is synced to Mixpanel user properties when enabled
 
 ## Important Notes
 
-- The SDK requires Flutter 3.7.0+ and Dart SDK ^3.7.0
+- The SDK requires Flutter 3.22.0+ and Dart SDK ^3.7.0
 - All Firebase services are optional and controlled via `TangentConfig`
-- RevenueCat integration includes automatic purchase failure tracking to Mixpanel
+- In-app purchases use `in_app_purchase` (no RevenueCat dependency)
+- Superwall runs in native mode (no `PurchaseController`)
 - Adjust subscription tracking can be disabled via `automaticTrackSubscription` flag
 - The SDK uses `firebase_core` v4.0.0+ and latest stable versions of all dependencies
 - Uses `flutter_lints` v5.0.0+ with custom analysis options in `analysis_options.yaml`
-- Includes Superwall integration (v2.4.2+) for paywall management alongside RevenueCat
 
 ## Code Quality Standards
 

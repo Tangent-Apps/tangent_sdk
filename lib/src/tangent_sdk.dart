@@ -2,8 +2,8 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:tangent_sdk/src/core/service/purchases_service.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
+import 'package:tangent_sdk/src/services/iap_purchase_service.dart';
 import 'package:tangent_sdk/src/services/superwall_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
 
@@ -13,24 +13,12 @@ class TangentSDK {
   CrashReportingService? _crashReporting;
   AppCheckService? _appCheck;
   final List<AnalyticsService> _analyticsServices = [];
-  PurchasesService? _revenueService;
+  IAPPurchaseService? _iapService;
   AppTrackingTransparencyService? _appTrackingTransparency;
   AppReviewService? _appReview;
   PaywallsService? _superwallService;
 
-  // Stream controller for successful purchases
-  late final StreamController<Product> _successPurchaseController;
-
-  // Deduplication tracking
-  final Map<String, DateTime> _lastEmissionTimes = {};
-  static const Duration _deduplicationWindow = Duration(milliseconds: 1000); // 1 second window
-
-  // Purchase context storage for automatic tracking
-  Map<String, String>? _pendingPurchaseContext;
-
-  TangentSDK._(this._config) {
-    _successPurchaseController = StreamController<Product>.broadcast();
-  }
+  TangentSDK._(this._config);
 
   static TangentSDK get instance {
     if (_instance == null) {
@@ -42,9 +30,7 @@ class TangentSDK {
   /// Dispose of resources
   void dispose() {
     AppLogger.info('Disposing TangentSDK resources', tag: 'TangentSDK');
-    _successPurchaseController.close();
-    _lastEmissionTimes.clear();
-    _pendingPurchaseContext = null;
+    _iapService?.dispose();
   }
 
   /// Initialize the SDK with the provided configuration and optional Firebase options.
@@ -79,14 +65,7 @@ class TangentSDK {
   }
 
   /// Initialize the SDK services.
-  ///
-  /// This method should be called after initializing the SDK.
-  ///
-  /// [config] The configuration object containing the SDK settings.
-  /// [firebaseOptions] Optional Firebase options for initializing Firebase.
   Future<void> _initializeServices() async {
-    AdjustAnalyticsService? adjust;
-
     /// Initialize analytics services
     if (_config.enableAnalytics) {
       if (_config.mixpanelToken != null) {
@@ -99,7 +78,7 @@ class TangentSDK {
 
       if (_config.adjustAppToken != null && _config.environment != null) {
         AppLogger.info('Initializing Adjust Analytics Service', tag: 'Analytics');
-        adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
+        final adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
         await adjust.initialize();
         _analyticsServices.add(adjust);
         AppLogger.info('Adjust Analytics Service initialized', tag: 'Analytics');
@@ -123,58 +102,15 @@ class TangentSDK {
       }
     }
 
-    // Initialize purchases service
-    if (_config.enableRevenue && _config.revenueCatApiKey != null) {
-      AppLogger.info('Initializing RevenueCat Service', tag: 'Revenue');
-      _revenueService = RevenueCatService(
-        _config.revenueCatApiKey!,
-        enableAdjustIntegration: _config.enableRevenueCatAdjustIntegration,
-        enableFirebaseIntegration: _config.enableRevenueCatFirebaseIntegration,
-      );
-      await _revenueService!.initialize();
-      AppLogger.info('RevenueCat Service initialized', tag: 'Revenue');
-
-      // Set up RevenueCat-Adjust integration if both services are enabled
-      if (_config.enableRevenueCatAdjustIntegration && _config.adjustAppToken != null) {
-        AppLogger.info('Setting up RevenueCat-Adjust integration', tag: 'Revenue');
-        if (adjust != null) {
-          final identifiers = await (_revenueService! as RevenueCatService).setupAdjustIntegration(
-            adjustAnalyticsService: adjust,
-          );
-          AppLogger.info(
-            'RevenueCat-Adjust integration configured with ${identifiers.length} identifiers',
-            tag: 'Revenue',
-          );
-        }
-      }
-
-      // Set up RevenueCat-Firebase Analytics integration if enabled
-      if (_config.enableRevenueCatFirebaseIntegration) {
-        AppLogger.info('Setting up RevenueCat-Firebase Analytics integration', tag: 'Revenue');
-        final appInstanceId = await (_revenueService! as RevenueCatService).setupFirebaseIntegration();
-        if (appInstanceId != null) {
-          AppLogger.info(
-            'RevenueCat-Firebase integration configured with App Instance ID: $appInstanceId',
-            tag: 'Revenue',
-          );
-        } else {
-          AppLogger.error(
-            'Failed to set up RevenueCat-Firebase integration. Ensure Firebase is initialized with firebaseOptions.',
-            tag: 'Revenue',
-          );
-        }
-      }
-
-      // Initial sync of RevenueCat customer data to Mixpanel People
-      if (_config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
-        AppLogger.info('Performing initial RevenueCat to Mixpanel sync', tag: 'Mixpanel-RevenueCat-Sync');
-        await syncRevenueCatToMixpanel();
-      }
-    }
+    // Initialize IAP service
+    AppLogger.info('Initializing IAP Purchase Service', tag: 'IAP');
+    _iapService = IAPPurchaseService();
+    await _iapService!.initialize();
+    AppLogger.info('IAP Purchase Service initialized', tag: 'IAP');
 
     await Future.wait([
       // Initialize Superwall service
-      if (_config.enableAutoInitSuperwall) initSuperwall(),
+      if (_config.enableSuperwall && _config.enableAutoInitSuperwall) initSuperwall(),
 
       // Initialize crash reporting
       if (_config.enableCrashlytics) _enableCrashlytics(),
@@ -217,48 +153,29 @@ class TangentSDK {
   ///    and call this method manually when you want to initialize Superwall.
   ///
   /// **Requirements:**
-  /// - RevenueCat service must be initialized first (enabled via `enableRevenue: true`)
+  /// - `enableSuperwall` must be `true` in [TangentConfig]
   /// - iOS API key must be provided via `superwallIOSApiKey` in [TangentConfig]
   /// - Android API key is optional (can be empty string)
   ///
-  /// **Example usage:**
-  /// ```dart
-  /// // Option 1: Automatic initialization (default)
-  /// final config = TangentConfig(
-  ///   superwallIOSApiKey: 'your_ios_key',
-  ///   enableAutoInitSuperwall: true, // Default
-  /// );
-  /// await TangentSDK.initialize(config: config);
-  /// // Superwall is now ready to use
-  ///
-  /// // Option 2: Manual initialization
-  /// final config = TangentConfig(
-  ///   superwallIOSApiKey: 'your_ios_key',
-  ///   enableAutoInitSuperwall: false,
-  /// );
-  /// await TangentSDK.initialize(config: config);
-  /// // Initialize Superwall later when needed
-  /// await TangentSDK.instance.initSuperwall();
-  /// ```
-  ///
-  /// **Note:** This method is safe to call multiple times. If Superwall is already
-  /// initialized, subsequent calls will be ignored.
-  Future<void> initSuperwall() async {
+  /// [userId] Optional user ID to identify the user with Superwall.
+  Future<void> initSuperwall({String? userId}) async {
+    if (!_config.enableSuperwall) {
+      AppLogger.info('Superwall is disabled in config', tag: superwallTag);
+      return;
+    }
+
     if (_config.superwallIOSApiKey != null) {
       AppLogger.info('Initializing Superwall Service', tag: superwallTag);
-      final info = await _revenueService!.getCustomerPurchasesInfo();
-      final userId = info.data.originalAppUserId;
       _superwallService ??= SuperwallService(
         iOSApiKey: _config.superwallIOSApiKey!,
         androidApiKey: _config.superwallAndroidApiKey ?? "",
-        revenueCarUserId: userId,
-        // Set up purchase callback to track events to Adjust
-        onSubscriptionPurchaseCompleted: _onSubscriptionPurchaseCompleted,
-        onConsumablePurchaseCompleted: _onConsumablePurchaseCompleted,
       );
 
-      // Initialize Superwall with RevenueCat integration if available
       await _superwallService!.initialize();
+
+      if (userId != null) {
+        await _superwallService!.identifyUser(userId);
+      }
 
       AppLogger.info('Superwall Service initialized', tag: superwallTag);
     } else {
@@ -460,45 +377,24 @@ class TangentSDK {
     }
   }
 
-  /// Sync RevenueCat customer data to Mixpanel People
-  /// This sets user properties based on their subscription status
-  Future<void> syncRevenueCatToMixpanel() async {
-    final customerInfoResult = await _revenueService?.getCustomerPurchasesInfo();
-    if (customerInfoResult == null) {
-      AppLogger.error('RevenueCat service not initialized', tag: 'Mixpanel-RevenueCat-Sync');
+  /// Sync subscription status to Mixpanel People
+  /// Sets `has_active_subscription` as a user profile property
+  Future<void> syncSubscriptionToMixpanel() async {
+    if (!_config.enableMixpanelSubscriptionSync || _config.mixpanelToken == null) return;
+
+    final statusResult = await _superwallService?.getSubscriptionStatus();
+    if (statusResult == null) {
+      AppLogger.error('Superwall service not initialized', tag: 'Mixpanel-Subscription-Sync');
       return;
     }
 
-    customerInfoResult.when(
-      success: (customerInfo) async {
-        final properties = <String, dynamic>{
-          'rc_user_id': customerInfo.originalAppUserId,
-          'rc_has_active_subscription': customerInfo.hasActiveSubscription,
-          'rc_active_subscriptions': customerInfo.purchases.where((p) => p.isActive).map((p) => p.productId).toList(),
-          'rc_management_url': customerInfo.managementURL,
-        };
-
-        // Get entitlements if available
-        final entitlementsResult = await _revenueService?.getEntitlements();
-        entitlementsResult?.when(
-          success: (entitlements) {
-            properties['rc_active_entitlements'] =
-                entitlements.where((e) => e.isActive).map((e) => e.identifier).toList();
-            properties['rc_entitlement_count'] = entitlements.where((e) => e.isActive).length;
-          },
-          failure: (_) {},
-        );
-
-        // Identify user with RevenueCat user ID
-        await identifyUser(customerInfo.originalAppUserId);
-
-        // Set user properties
-        await setMixpanelUserProperties(properties);
-
-        AppLogger.info('Successfully synced RevenueCat data to Mixpanel', tag: 'Mixpanel-RevenueCat-Sync');
+    statusResult.when(
+      success: (isActive) async {
+        await setMixpanelUserProperties({'has_active_subscription': isActive});
+        AppLogger.info('Successfully synced subscription status to Mixpanel', tag: 'Mixpanel-Subscription-Sync');
       },
       failure: (error) {
-        AppLogger.error('Failed to sync RevenueCat to Mixpanel: $error', tag: 'Mixpanel-RevenueCat-Sync');
+        AppLogger.error('Failed to sync subscription to Mixpanel: $error', tag: 'Mixpanel-Subscription-Sync');
       },
     );
   }
@@ -578,229 +474,80 @@ class TangentSDK {
     return {};
   }
 
-  // Revenue Methods
+  // MARK: - Purchase Methods (via in_app_purchase)
+
+  /// Get products from the store
   Future<Result<List<Product>>> getProducts(List<String> productIds) async {
-    return await _revenueService?.getProducts(productIds) ?? const Success([]);
-  }
-
-  /// Purchase a product by id
-  /// Returns a [Result] of [CustomerPurchasesInfo]
-  /// Automatically tracks subscription events
-  /// Automatically tracks failure events
-  Future<Result<Product>> purchaseProductById(
-    String productId, {
-    String? eventToken,
-    String? eventName,
-    Map<String, String>? context,
-  }) async {
-    // Check if this is a renewal before making the purchase
-    final isRenewal = await _checkIsRenewal(productId);
-    // Use provided context or fallback to pending context
-    final finalContext = context ?? _pendingPurchaseContext;
-    final productResult = await _revenueService?.purchaseProductById(productId);
-
-    if (productResult == null) {
-      throw const ServiceNotInitializedException('PurchasesService');
-    }
-
-    if (productResult.isSuccess) {
-      final product = productResult.data;
-      if (finalContext != null) {
-        AppLogger.info('Using purchase context: ${finalContext.keys.join(', ')}', tag: 'PurchaseContext');
-      }
-
-      await _silentTrackSubscriptionEvent(
-        product: product,
-        isRenewalEvent: isRenewal,
-        eventName: eventName,
-        eventToken: eventToken,
-        context: finalContext,
-      );
-
-      // Clear pending context after use
-      _pendingPurchaseContext = null;
-
-      // Sync to Mixpanel after successful purchase
-      if (_config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
-        await syncRevenueCatToMixpanel();
-      }
-
-      return Success(product);
-    } else {
-      await _trackPurchaseFailureEvent(failure: productResult.error, productId: productId);
-      return Failure(productResult.error);
-    }
+    return await _iapService?.getProducts(productIds) ?? const Success([]);
   }
 
   /// Make a purchase
-  /// Returns a [Result] of [CustomerPurchasesInfo]
-  /// Automatically tracks subscription events
-  /// Automatically tracks failure events
-  Future<Result<CustomerPurchasesInfo>> purchaseProduct(
+  /// Returns a [Result] of [Product]
+  /// Automatically tracks subscription events to Adjust and syncs to Superwall + Mixpanel on success
+  Future<Result<Product>> purchaseProduct(
     Product product, {
     String? eventToken,
     String? eventName,
     Map<String, String>? context,
   }) async {
-    // Check if this is a renewal before making the purchase
-    final isRenewal = await _checkIsRenewal(product.id);
-    // Use provided context or fallback to pending context
-    final finalContext = context ?? _pendingPurchaseContext;
-    final productResult = await _revenueService?.purchaseProduct(product);
+    final productResult = await _iapService?.purchaseProduct(product);
 
     if (productResult == null) {
-      throw const ServiceNotInitializedException('PurchasesService');
+      throw const ServiceNotInitializedException('IAPPurchaseService');
     }
 
     if (productResult.isSuccess) {
-      final customerPurchasesInfo = productResult.data;
-      if (finalContext != null) {
-        AppLogger.info('Using purchase context: ${finalContext.keys.join(', ')}', tag: 'PurchaseContext');
-      }
+      final purchasedProduct = productResult.data;
 
+      // Track subscription event to Adjust
       _silentTrackSubscriptionEvent(
-        product: product,
-        isRenewalEvent: isRenewal,
+        product: purchasedProduct,
         eventToken: eventToken,
         eventName: eventName,
-        context: finalContext,
+        context: context,
       );
 
-      // Clear pending context after use
-      _pendingPurchaseContext = null;
+      // Sync subscription status to Superwall
+      await _syncSubscriptionToSuperwall();
 
       // Sync to Mixpanel after successful purchase
-      if (_config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
-        await syncRevenueCatToMixpanel();
+      if (_config.enableMixpanelSubscriptionSync && _config.mixpanelToken != null) {
+        await syncSubscriptionToMixpanel();
       }
 
-      return Success(customerPurchasesInfo);
+      return Success(purchasedProduct);
     } else {
-      await _trackPurchaseFailureEvent(
-        failure: productResult.error,
-        productId: product.id,
-        productTitle: product.title,
-        productPrice: product.priceString,
-        productCurrencyCode: product.currencyCode,
-      );
       return Failure(productResult.error);
     }
   }
 
+  /// Check if the user has an active subscription (via Superwall)
   Future<Result<bool>> checkActiveSubscription() async {
-    return await _revenueService?.checkActiveSubscription() ?? const Success(false);
+    return await _superwallService?.getSubscriptionStatus() ?? const Success(false);
   }
 
-  Future<Result<bool>> checkActiveSubscriptionToEntitlement(String entitlementId) async {
-    return await _revenueService?.checkActiveSubscriptionToEntitlement(entitlementId) ?? const Success(false);
-  }
-
-  Future<Result<CustomerPurchasesInfo>> restorePurchases() async {
-    final result =
-        await _revenueService?.restorePurchases() ??
-        const Success(
-          CustomerPurchasesInfo(
-            hasActiveSubscription: false,
-            originalAppUserId: '',
-            purchases: [],
-            managementURL: null,
-          ),
-        );
+  /// Restore purchases
+  /// Returns a [Result] of [bool] indicating success
+  Future<Result<bool>> restorePurchases() async {
+    final result = await _iapService?.restorePurchases() ?? const Success(false);
 
     // Sync to Mixpanel after successful restore
-    if (result.isSuccess && _config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
-      AppLogger.info('Purchases restored, syncing to Mixpanel', tag: 'RevenueCat-Restore');
-      await syncRevenueCatToMixpanel();
+    if (result.isSuccess && _config.enableMixpanelSubscriptionSync && _config.mixpanelToken != null) {
+      AppLogger.info('Purchases restored, syncing to Mixpanel', tag: 'IAP-Restore');
+      await syncSubscriptionToMixpanel();
     }
 
     return result;
   }
 
-  Future<Result<void>> logIn(String appUserId) async {
-    final result =
-        await _revenueService?.logIn(appUserId) ?? const Failure(ServiceNotInitializedException('PurchasesService'));
+  /// Stream of subscription status changes (via Superwall)
+  Stream<bool> get subscriptionStatusStream =>
+      _superwallService?.subscriptionStatusStream ?? const Stream.empty();
 
-    // Automatically sync user data to Mixpanel on successful login
-    if (result.isSuccess && _config.enableMixpanelRevenueCatSync && _config.mixpanelToken != null) {
-      AppLogger.info('User logged in, syncing to Mixpanel', tag: 'RevenueCat-Login');
-      await syncRevenueCatToMixpanel();
-    }
-
-    return result;
-  }
-
-  Future<Result<List<Product>>> getOffering(String offeringId) async {
-    return await _revenueService?.getOffering(offeringId) ?? const Success([]);
-  }
-
-  Future<Result<List<Product>>> getOfferings() async {
-    return await _revenueService?.getOfferings() ?? const Success([]);
-  }
-
-  Stream<CustomerPurchasesInfo> get customerPurchasesInfoStream =>
-      _revenueService?.customerPurchasesInfoStream ?? const Stream.empty();
-
-  /// Stream of successful purchases
-  Stream<Product> get successPurchaseStream {
-    return _successPurchaseController.stream;
-  }
-
-  /// Emit product to success stream with deduplication
-  void _emitToSuccessStream(Product product) {
-    final now = DateTime.now();
-    final lastEmissionTime = _lastEmissionTimes[product.id];
-
-    // Check if we should emit (no previous emission or outside deduplication window)
-    if (lastEmissionTime == null || now.difference(lastEmissionTime) > _deduplicationWindow) {
-      _lastEmissionTimes[product.id] = now;
-      _successPurchaseController.add(product);
-      AppLogger.info('✅ Emitted ${product.id} to success stream', tag: 'PurchaseStream');
-    } else {
-      final timeSinceLastEmission = now.difference(lastEmissionTime);
-      AppLogger.info(
-        '🚫 Blocked duplicate emission of ${product.id} (${timeSinceLastEmission.inMilliseconds}ms ago)',
-        tag: 'PurchaseStream',
-      );
-    }
-  }
-
-  Future<Result<String?>> getManagementUrl() async {
-    return await _revenueService?.getManagementUrl() ?? const Success(null);
-  }
-
-  Future<Result<List<Entitlement>>> getEntitlements() async {
-    return await _revenueService?.getEntitlements() ?? const Success([]);
-  }
-
-  /// Determines if the given `productId` is a renewal purchase based on the
-  /// existing purchase history.
-  ///
-  /// Returns `true` when:
-  /// * The customer has already purchased the product, **and**
-  /// * The existing purchase contains an `originalPurchaseDate` (i.e. not a trial).
-  Future<bool> _checkIsRenewal(String productId) async {
-    try {
-      final customerInfo = await _revenueService?.getCustomerPurchasesInfo();
-      if (customerInfo == null) return false;
-
-      return customerInfo.when(
-        success: (info) {
-          // Check if user has previously purchased this product
-          final existingPurchase = info.purchases.firstWhere(
-            (purchase) => purchase.productId == productId,
-            orElse: () => CustomerPurchaseInfo(productId: '', isActive: false, isSandbox: false, willRenew: false),
-          );
-
-          // It's a renewal if:
-          // 1. The product exists in purchase history
-          // 2. Has an original purchase date (was purchased before)
-          return existingPurchase.productId.isNotEmpty && existingPurchase.originalPurchaseDate != null;
-        },
-        failure: (_) => false,
-      );
-    } catch (err) {
-      return false;
-    }
+  /// Sync subscription status to Superwall by setting active entitlements
+  Future<void> _syncSubscriptionToSuperwall() async {
+    if (_superwallService == null) return;
+    await _superwallService!.setSubscriptionStatus(activeEntitlementIds: ['Pro']);
   }
 
   /// Fire-and-forget wrapper around [trackSubscription].
@@ -809,67 +556,22 @@ class TangentSDK {
   /// in Adjust/Mixpanel tracking never interfere with the purchase flow.
   Future<void> _silentTrackSubscriptionEvent({
     required Product product,
-    bool isRenewalEvent = false,
     String? eventToken,
     String? eventName,
     Map<String, String>? context,
   }) async {
     try {
       await trackSubscription(
-        eventToken:
-            eventToken ?? (isRenewalEvent ? _config.adjustSubscriptionRenewalToken! : _config.adjustSubscriptionToken!),
+        eventToken: eventToken ?? _config.adjustSubscriptionToken!,
         price: product.price,
         currency: product.currencyCode,
         subscriptionId: product.id,
-        eventName: eventName ?? (isRenewalEvent ? "subscription_renewed" : "subscribe"),
+        eventName: eventName ?? "subscribe",
         context: context,
       );
     } catch (err) {
       AppLogger.error(err.toString());
     }
-  }
-
-  /// Private method to track purchase failure events based on failure code
-  Future<void> _trackPurchaseFailureEvent({
-    required TangentSDKException failure,
-    required String productId,
-    String? productTitle,
-    String? productPrice,
-    String? productCurrencyCode,
-  }) async {
-    final String failureReason;
-    final String errorCode;
-    final String eventName;
-
-    if (failure is PurchaseException) {
-      failureReason = failure.code ?? PurchaseFailureCode.unknown.name;
-      errorCode = failure.code ?? PurchaseFailureCode.unknown.name;
-
-      // Check if user cancelled the purchase
-      if (failure.code == PurchaseFailureCode.userCancelled.name) {
-        eventName = 'purchase_cancelled';
-      } else if (failure.code == PurchaseFailureCode.network.name) {
-        eventName = 'purchase_failed';
-      } else {
-        eventName = 'error_while_making_purchase';
-      }
-    } else {
-      failureReason = failure.message;
-      errorCode = failure.code ?? PurchaseFailureCode.unknown.name;
-      eventName = 'error_while_making_purchase';
-    }
-
-    final properties = <String, Object>{
-      'original_error': failure.originalError.toString(),
-      'product_id': productId,
-      'purchase_error_code': errorCode,
-    };
-
-    if (productTitle != null) properties['product_title'] = productTitle;
-    if (productPrice != null) properties['product_price'] = productPrice;
-    if (productCurrencyCode != null) properties['product_currency_code'] = productCurrencyCode;
-
-    await trackFailureEvent(eventName: eventName, failureReason: failureReason, properties: properties);
   }
 
   /// App Tracking Transparency Methods
@@ -900,35 +602,6 @@ class TangentSDK {
   Future<void> openStoreListing({String? appStoreId}) async {
     await _appReview?.openStoreListing(appStoreId: appStoreId);
   }
-
-  // Purchase Context Methods
-  /// Set purchase context that will be automatically included in the next purchase event.
-  /// This context will be sent to both Adjust and Mixpanel when a purchase is completed.
-  ///
-  /// Example usage:
-  /// ```dart
-  /// TangentSDK.instance.setPurchaseContext({
-  ///   'book_title': 'Flutter Mastery',
-  ///   'chapter': 'Chapter 5',
-  ///   'source_screen': 'reading_page'
-  /// });
-  ///
-  /// // User purchases through Superwall - context automatically included
-  /// await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
-  /// ```
-  void setPurchaseContext(Map<String, String> context) {
-    _pendingPurchaseContext = context;
-    AppLogger.info('Purchase context set with keys: ${context.keys.join(', ')}', tag: 'PurchaseContext');
-  }
-
-  /// Clear any pending purchase context
-  void clearPurchaseContext() {
-    _pendingPurchaseContext = null;
-    AppLogger.info('Purchase context cleared', tag: 'PurchaseContext');
-  }
-
-  /// Get the current pending purchase context (readonly)
-  Map<String, String>? get purchaseContext => _pendingPurchaseContext;
 
   /// MARK: Superwall/Paywall Methods
   /// Register a placement with Superwall
@@ -1056,67 +729,5 @@ class TangentSDK {
       failure: (error) => AppLogger.error('Failed to refresh subscription status', error: error, tag: superwallTag),
     );
     return result;
-  }
-
-  /// Handle Superwall purchase completion and track to Adjust
-  /// This method is called automatically when a purchase is completed through Superwall
-  Future<void> _onSubscriptionPurchaseCompleted(Product product) async {
-    final isRenewal = await _checkIsRenewal(product.id);
-    final context = _pendingPurchaseContext;
-
-    try {
-      AppLogger.info('Handling Superwall purchase: ${product.id}', tag: superwallTag);
-      if (context != null) {
-        AppLogger.info('Using purchase context: ${context.keys.join(', ')}', tag: superwallTag);
-      }
-
-      // Track the purchase to Adjust using the same logic as regular purchases
-      await _silentTrackSubscriptionEvent(product: product, isRenewalEvent: isRenewal, context: context);
-
-      // Clear context after use
-      _pendingPurchaseContext = null;
-
-      // Emit to success purchase stream with deduplication
-      _emitToSuccessStream(product);
-
-      AppLogger.info('Superwall purchase tracked successfully to Adjust', tag: superwallTag);
-    } catch (e) {
-      AppLogger.error('Failed to track Superwall purchase to Adjust', error: e, tag: superwallTag);
-    }
-  }
-
-  /// Handle Superwall Consumable purchase completion and track to Adjust
-  /// This method is called automatically when a purchase is completed through Superwall
-  Future<void> _onConsumablePurchaseCompleted(Product product) async {
-    final context = _pendingPurchaseContext;
-
-    try {
-      AppLogger.info('Handling Superwall Consumable Purchase: ${product.id}', tag: superwallTag);
-      if (context != null) {
-        AppLogger.info('Using purchase context: ${context.keys.join(', ')}', tag: superwallTag);
-      }
-
-      // Track to Adjust only if token is configured
-      if (_config.adjustConsumableToken != null) {
-        await trackSubscription(
-          eventToken: _config.adjustConsumableToken!,
-          price: product.price,
-          currency: product.currencyCode,
-          subscriptionId: product.id,
-          eventName: "coin_purchase",
-          context: context,
-        );
-      }
-
-      // Clear context after use
-      _pendingPurchaseContext = null;
-
-      // Emit to success purchase stream with deduplication
-      _emitToSuccessStream(product);
-
-      AppLogger.info('Superwall consumable purchase tracked successfully', tag: superwallTag);
-    } catch (e) {
-      AppLogger.error('Failed to track Superwall purchase to Adjust', error: e, tag: superwallTag);
-    }
   }
 }
