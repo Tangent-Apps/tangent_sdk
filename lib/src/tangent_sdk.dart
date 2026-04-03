@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
+import 'package:tangent_sdk/src/services/billing_issue_service.dart';
 import 'package:tangent_sdk/src/services/iap_purchase_service.dart';
 import 'package:tangent_sdk/src/services/superwall_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
@@ -17,6 +18,7 @@ class TangentSDK {
   AppTrackingTransparencyService? _appTrackingTransparency;
   AppReviewService? _appReview;
   PaywallsService? _superwallService;
+  BillingIssueService? _billingIssueService;
 
   TangentSDK._(this._config);
 
@@ -121,6 +123,9 @@ class TangentSDK {
       // Initialize app tracking transparency
       if (_config.enableAppTrackingTransparency) requestTrackingAuthorization(),
     ]);
+
+    // Initialize billing issue service
+    _billingIssueService = BillingIssueService();
 
     // Initialize app review service (utility - always available)
     AppLogger.info('Initializing App Review Service', tag: 'Review');
@@ -524,6 +529,21 @@ class TangentSDK {
   /// Check if the user has an active subscription (via Superwall)
   Future<Result<bool>> checkActiveSubscription() async {
     return await _superwallService?.getSubscriptionStatus() ?? const Success(false);
+  }
+
+  /// Check billing issue status via native StoreKit 2 (iOS) / Play Billing (Android)
+  ///
+  /// Returns [BillingStatus] with the current billing state.
+  /// On iOS, detects grace period and billing retry states via StoreKit 2.
+  /// On Android, returns normal (use Google's InAppMessages for grace period UI).
+  Future<Result<BillingStatus>> checkBillingIssue() async {
+    try {
+      final status = await _billingIssueService!.checkBillingIssue();
+      return Success(status);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to check billing issue', error: e, stackTrace: stackTrace, tag: 'BillingIssue');
+      return Failure(ServiceOperationException('checkBillingIssue', e));
+    }
   }
 
   /// Restore purchases

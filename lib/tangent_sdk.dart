@@ -9,6 +9,7 @@ export 'package:tangent_sdk/src/core/service/analytics_service.dart';
 export 'package:tangent_sdk/src/core/service/app_check_service.dart';
 export 'package:tangent_sdk/src/core/service/crash_reporting_service.dart';
 export 'package:tangent_sdk/src/core/service/paywalls_service.dart';
+export 'src/core/model/billing_status.dart';
 export 'src/core/model/customer_purchases_info.dart';
 export 'src/core/model/entitlement.dart';
 export 'src/core/model/product.dart';
