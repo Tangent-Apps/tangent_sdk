@@ -19,6 +19,7 @@ class TangentSDK {
   AppReviewService? _appReview;
   PaywallsService? _superwallService;
   BillingIssueService? _billingIssueService;
+  AdjustAnalyticsService? _adjustService;
 
   TangentSDK._(this._config);
 
@@ -78,15 +79,7 @@ class TangentSDK {
         AppLogger.info('Mixpanel Analytics Service initialized', tag: 'Analytics');
       }
 
-      if (_config.adjustAppToken != null && _config.environment != null) {
-        AppLogger.info('Initializing Adjust Analytics Service', tag: 'Analytics');
-        final adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
-        await adjust.initialize();
-        _analyticsServices.add(adjust);
-        AppLogger.info('Adjust Analytics Service initialized', tag: 'Analytics');
-      } else {
-        throw const ServiceNotInitializedException('AdjustAnalyticsService');
-      }
+      if (_config.enableAutoInitAdjust) await initAdjust();
 
       if (_config.automaticTrackSubscription &&
           _config.adjustSubscriptionToken != null &&
@@ -186,6 +179,37 @@ class TangentSDK {
     } else {
       AppLogger.error('Superwall enabled but API keys not configured', tag: superwallTag);
     }
+  }
+
+  /// Manually initialize Adjust SDK.
+  /// Call this after ATT prompt response when using enableAutoInitAdjust: false.
+  Future<void> initAdjust() async {
+    if (_config.adjustAppToken == null || _config.environment == null) {
+      throw const ServiceNotInitializedException('AdjustAnalyticsService');
+    }
+    if (_adjustService != null) {
+      AppLogger.info('Adjust already initialized', tag: 'Analytics');
+      return;
+    }
+    AppLogger.info('Initializing Adjust Analytics Service', tag: 'Analytics');
+    final adjust = AdjustAnalyticsService(_config.adjustAppToken!, _config.environment!);
+    await adjust.initialize();
+    _adjustService = adjust;
+    _analyticsServices.add(adjust);
+    AppLogger.info('Adjust Analytics Service initialized', tag: 'Analytics');
+  }
+
+  /// Returns Adjust's device ID (adid). Available after initAdjust(), no ATT required.
+  Future<String?> getAdjustId() => _adjustService?.getAdjustId() ?? Future.value();
+
+  /// Sets the Adjust device ID as a Superwall IntegrationAttribute so Superwall
+  /// can forward revenue events to Adjust on the server side.
+  Future<void> setSuperwallAdjustId(String adjustId) {
+    final superwall = _superwallService;
+    if (superwall is SuperwallService) {
+      return superwall.setAdjustId(adjustId);
+    }
+    return Future.value();
   }
 
   /// Record an error to the crash reporting service.

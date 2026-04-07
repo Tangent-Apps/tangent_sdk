@@ -238,6 +238,14 @@ class SuperwallService extends PaywallsService {
   @override
   Stream<bool> get subscriptionStatusStream => _subscriptionStatusController.stream;
 
+  Future<void> setAdjustId(String adjustId) async {
+    _ensureInitialized();
+    await Superwall.shared.setIntegrationAttribute(
+      IntegrationAttribute.adjustId,
+      adjustId,
+    );
+  }
+
   void _ensureInitialized() {
     if (!_isInitialized) {
       throw const ServiceNotInitializedException('SuperwallService');

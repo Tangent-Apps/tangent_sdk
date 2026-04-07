@@ -312,6 +312,33 @@ failure: (error) => print('Error: $error'),
 );
 ```
 
+### Deferred Adjust Initialization & Superwall Integration
+
+By default Adjust initializes at SDK startup, which means the install event fires before the ATT prompt. To send the install event after the user responds to ATT, use `enableAutoInitAdjust: false` and call `initAdjust()` manually.
+
+```dart
+final config = TangentConfig(
+  adjustAppToken: 'your_adjust_token',
+  environment: TangentEnvironment.production,
+  enableAutoInitAdjust: false, // do not init Adjust at startup
+  // ...
+);
+
+await TangentSDK.initialize(config: config);
+
+// Show ATT prompt first
+await TangentSDK.instance.requestTrackingAuthorization();
+
+// Then initialize Adjust (install event fires here, IDFA is available)
+await TangentSDK.instance.initAdjust();
+
+// Set Adjust ID on Superwall so it can forward revenue events server-side
+final adjustId = await TangentSDK.instance.getAdjustId();
+if (adjustId != null) {
+  await TangentSDK.instance.setSuperwallAdjustId(adjustId);
+}
+```
+
 ### App Tracking Transparency
 
 #### Request Tracking Authorization
@@ -429,6 +456,7 @@ TangentSDK.instance.log
 | `enableAutoInitSuperwall`        | bool                | No       | true    | Auto-initialize Superwall during SDK setup       |
 | `superwallIOSApiKey`             | String?             | No       | null    | Superwall iOS API key                            |
 | `superwallAndroidApiKey`         | String?             | No       | null    | Superwall Android API key                        |
+| `enableAutoInitAdjust`           | bool                | No       | true    | Auto-initialize Adjust during SDK setup. Set to `false` to delay init until after the ATT prompt. |
 
 ### TangentEnvironment
 

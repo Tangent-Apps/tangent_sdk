@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-07
+
+### Added
+
+- `enableAutoInitAdjust` config flag — set to `false` to defer Adjust initialization until after the ATT prompt, then call `initAdjust()` manually
+- `initAdjust()` — public method to initialize Adjust on demand (mirrors the existing `initSuperwall()` pattern)
+- `getAdjustId()` — exposes Adjust's device ID (`adid`); available after `initAdjust()`, no ATT required
+- `setSuperwallAdjustId(String adjustId)` — sets the Adjust ID as a Superwall `IntegrationAttribute` so Superwall can forward revenue events to Adjust server-side
+
 ## [0.2.0] - 2026-04-03
 
 ### Breaking Changes

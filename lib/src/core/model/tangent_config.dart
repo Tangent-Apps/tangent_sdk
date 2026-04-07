@@ -63,6 +63,15 @@ class TangentConfig {
   /// Defaults to `true`.
   final bool enableMixpanelSubscriptionSync;
 
+  /// Controls whether Adjust is automatically initialized during SDK setup.
+  ///
+  /// When `true` (default): Adjust initializes immediately in [TangentSDK.initialize].
+  /// When `false`: You must manually call [TangentSDK.instance.initAdjust()] when ready.
+  ///
+  /// Use `false` when the host app wants to delay Adjust init until after the ATT prompt.
+  /// Defaults to `true`.
+  final bool enableAutoInitAdjust;
+
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
@@ -80,5 +89,6 @@ class TangentConfig {
     this.enableAppTrackingTransparency = true,
     this.adjustConsumableToken,
     this.enableMixpanelSubscriptionSync = true,
+    this.enableAutoInitAdjust = true,
   });
 }
