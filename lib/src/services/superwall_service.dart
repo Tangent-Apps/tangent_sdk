@@ -9,13 +9,18 @@ import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 
 const superwallTag = "Superwall💸";
 
-class SuperwallService extends PaywallsService {
+class SuperwallService extends PaywallsService implements SuperwallDelegate {
   final String iOSApiKey;
   final String androidApiKey;
 
   bool _isInitialized = false;
 
   final StreamController<bool> _subscriptionStatusController = StreamController<bool>.broadcast();
+  final StreamController<void> _willRedeemLinkController = StreamController<void>.broadcast();
+  final StreamController<RedemptionResult> _didRedeemLinkController = StreamController<RedemptionResult>.broadcast();
+
+  Stream<void> get willRedeemLinkStream => _willRedeemLinkController.stream;
+  Stream<RedemptionResult> get didRedeemLinkStream => _didRedeemLinkController.stream;
 
   SuperwallService({
     required this.iOSApiKey,
@@ -48,6 +53,9 @@ class SuperwallService extends PaywallsService {
         },
       );
       _isInitialized = true;
+
+      // Set delegate for redemption and lifecycle callbacks
+      Superwall.shared.setDelegate(this);
 
       // Log initial subscription status
       Superwall.shared.getSubscriptionStatus().then((status) {
@@ -244,6 +252,69 @@ class SuperwallService extends PaywallsService {
       IntegrationAttribute.adjustId,
       adjustId,
     );
+  }
+
+  // --- SuperwallDelegate methods ---
+
+  @override
+  void willRedeemLink() {
+    AppLogger.info('Will redeem web checkout link', tag: superwallTag);
+    _willRedeemLinkController.add(null);
+  }
+
+  @override
+  void didRedeemLink(RedemptionResult result) {
+    AppLogger.info('Did redeem web checkout link: $result', tag: superwallTag);
+    _didRedeemLinkController.add(result);
+  }
+
+  @override
+  void subscriptionStatusDidChange(SubscriptionStatus newValue) {
+    final isActive = newValue is SubscriptionStatusActive;
+    AppLogger.info('Subscription status changed: $isActive', tag: superwallTag);
+    _subscriptionStatusController.add(isActive);
+  }
+
+  @override
+  void handleSuperwallEvent(SuperwallEventInfo eventInfo) {}
+
+  @override
+  void handleCustomPaywallAction(String name) {}
+
+  @override
+  void willDismissPaywall(PaywallInfo paywallInfo) {}
+
+  @override
+  void willPresentPaywall(PaywallInfo paywallInfo) {}
+
+  @override
+  void didDismissPaywall(PaywallInfo paywallInfo) {}
+
+  @override
+  void didPresentPaywall(PaywallInfo paywallInfo) {}
+
+  @override
+  void paywallWillOpenURL(Uri url) {}
+
+  @override
+  void paywallWillOpenDeepLink(Uri url) {}
+
+  @override
+  void handleLog(String level, String scope, String? message, Map<dynamic, dynamic>? info, String? error) {}
+
+  @override
+  void handleSuperwallDeepLink(Uri fullURL, List<String> pathComponents, Map<String, String> queryParameters) {}
+
+  @override
+  void customerInfoDidChange(CustomerInfo from, CustomerInfo to) {}
+
+  @override
+  void userAttributesDidChange(Map<String, Object> newAttributes) {}
+
+  void dispose() {
+    _subscriptionStatusController.close();
+    _willRedeemLinkController.close();
+    _didRedeemLinkController.close();
   }
 
   void _ensureInitialized() {

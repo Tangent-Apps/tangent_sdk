@@ -11,6 +11,7 @@ A comprehensive Flutter SDK wrapper for Firebase, Mixpanel, Adjust, Superwall, i
 - 🔒 **App Tracking Transparency**: iOS tracking permission handling
 - ⭐ **In-App Review**: Request app-store reviews
 - 🚑 **Unified Error Handling**: Centralized crash reporting and logging
+- 💳 **Superwall Stripe Checkout**: Web-based Stripe payments via Superwall with deep link redemption
 - 🔄 **Automatic Renewal Detection**: Intelligent tracking of new vs. renewal purchases
 - 📈 **Automatic Failure Tracking**: Purchase errors automatically sent to analytics
 - 📊 **Purchase Context Tracking**: Include custom metadata (book_title, chapter, etc.) with all purchase events
@@ -21,7 +22,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  tangent_sdk: ^0.2.0
+  tangent_sdk: ^0.3.0
 ```
 
 Then run:
@@ -337,6 +338,58 @@ final adjustId = await TangentSDK.instance.getAdjustId();
 if (adjustId != null) {
   await TangentSDK.instance.setSuperwallAdjustId(adjustId);
 }
+```
+
+### Superwall Stripe Checkout (Web Payments)
+
+Superwall can present Stripe-powered checkout pages in an in-app webview. After the user pays, Superwall redirects back to your app via a deep link with a redemption code. The SDK handles the full flow automatically.
+
+**Setup:**
+
+1. Configure deep links in your app (URL scheme or Universal Links)
+2. Forward deep links to the SDK:
+
+```dart
+// In your deep link handler (e.g., GoRouter redirect, uni_links listener)
+await TangentSDK.instance.superwallHandleDeepLink(uri);
+```
+
+3. Listen for redemption events to update your UI:
+
+```dart
+// Show loading when redemption starts
+TangentSDK.instance.willRedeemLinkStream?.listen((_) {
+  // Show loading indicator
+});
+
+// Handle redemption result
+TangentSDK.instance.didRedeemLinkStream?.listen((result) {
+  switch (result) {
+    case RedemptionResultSuccess():
+      // Subscription activated — unlock content
+      break;
+    case RedemptionResultError():
+      // Show error to user
+      break;
+    case RedemptionResultExpiredCode():
+      // Code expired
+      break;
+    case RedemptionResultInvalidCode():
+      // Invalid code
+      break;
+    case RedemptionResultExpiredSubscription():
+      // Subscription already expired
+      break;
+  }
+});
+```
+
+4. Subscription status updates automatically via `subscriptionStatusStream`:
+
+```dart
+TangentSDK.instance.subscriptionStatusStream.listen((isActive) {
+  // Update UI based on subscription state
+});
 ```
 
 ### App Tracking Transparency

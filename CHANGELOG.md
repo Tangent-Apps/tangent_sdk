@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-20
+
+### Added
+
+- **Superwall Stripe Checkout support**: Full delegate integration for web-based Stripe checkout redemption flow
+- `SuperwallDelegate` implementation in `SuperwallService` — receives all Superwall lifecycle callbacks
+- `willRedeemLinkStream` — fires before Superwall redeems a web checkout code (show loading UI)
+- `didRedeemLinkStream` — fires with `RedemptionResult` after redemption completes (handle success/error)
+- `subscriptionStatusDidChange` delegate callback now drives `subscriptionStatusStream` directly
+- Re-exported `RedemptionResult`, `RedemptionResultSuccess`, `RedemptionResultError`, `RedemptionResultExpiredCode`, `RedemptionResultInvalidCode`, `RedemptionResultExpiredSubscription`, `RedemptionInfo`, `ErrorInfo`, `ExpiredCodeInfo`, `PurchaserInfo`, `StoreIdentifiers`, `StripeStoreIdentifiers` from `superwallkit_flutter`
+
+### Changed
+
+- `SuperwallService` now implements `SuperwallDelegate` and registers itself during `configure()`
+- `dispose()` on `TangentSDK` now cleans up Superwall delegate stream controllers
+
 ## [0.2.2] - 2026-04-07
 
 ### Added

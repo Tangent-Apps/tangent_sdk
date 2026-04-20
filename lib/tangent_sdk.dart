@@ -1,6 +1,20 @@
 library;
 
 export 'package:app_tracking_transparency/app_tracking_transparency.dart' show TrackingStatus;
+export 'package:superwallkit_flutter/superwallkit_flutter.dart'
+    show
+        RedemptionResult,
+        RedemptionResultSuccess,
+        RedemptionResultError,
+        RedemptionResultExpiredCode,
+        RedemptionResultInvalidCode,
+        RedemptionResultExpiredSubscription,
+        RedemptionInfo,
+        ErrorInfo,
+        ExpiredCodeInfo,
+        PurchaserInfo,
+        StoreIdentifiers,
+        StripeStoreIdentifiers;
 export 'package:tangent_sdk/src/core/model/constants.dart';
 export 'package:tangent_sdk/src/core/enum/tangent_environment.dart';
 export 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';

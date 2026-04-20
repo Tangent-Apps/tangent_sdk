@@ -34,6 +34,10 @@ class TangentSDK {
   void dispose() {
     AppLogger.info('Disposing TangentSDK resources', tag: 'TangentSDK');
     _iapService?.dispose();
+    final superwall = _superwallService;
+    if (superwall is SuperwallService) {
+      superwall.dispose();
+    }
   }
 
   /// Initialize the SDK with the provided configuration and optional Firebase options.
@@ -587,6 +591,16 @@ class TangentSDK {
   /// Stream of subscription status changes (via Superwall)
   Stream<bool> get subscriptionStatusStream =>
       _superwallService?.subscriptionStatusStream ?? const Stream.empty();
+
+  /// Stream that fires when Superwall is about to redeem a web checkout link.
+  /// App should show loading UI.
+  Stream<void>? get willRedeemLinkStream =>
+      _superwallService is SuperwallService ? (_superwallService as SuperwallService).willRedeemLinkStream : null;
+
+  /// Stream that fires with the result after Superwall redeems a web checkout link.
+  /// App should handle success/error states.
+  Stream<RedemptionResult>? get didRedeemLinkStream =>
+      _superwallService is SuperwallService ? (_superwallService as SuperwallService).didRedeemLinkStream : null;
 
   /// Sync subscription status to Superwall by setting active entitlements
   Future<void> _syncSubscriptionToSuperwall() async {
