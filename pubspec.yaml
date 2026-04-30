@@ -44,6 +44,7 @@ dependencies:
 
   # Superwall
   superwallkit_flutter: ^2.4.12
+  facebook_app_events: ^0.27.2
 
 dev_dependencies:
   flutter_test:

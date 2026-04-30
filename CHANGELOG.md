@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `autoTrackPaywallShown` config flag (default `true`) — auto-fires `paywall_shown` via Superwall `didPresentPaywall` delegate
 - `autoTrackPaywallCheckoutShown` config flag (default `true`) — auto-fires `paywall_checkout_shown` via Superwall `transactionStart` delegate and at the start of `purchaseProduct()` for custom paywalls
 - Superwall delegate callbacks: `onPaywallPresented` and `onTransactionStart` on `SuperwallService`
+- **Facebook App Events integration**: `enableFacebook` config flag to initialize Facebook SDK with auto-logging (installs, opens, purchases) and advertiser tracking for Meta signal
 
 ## [0.3.0] - 2026-04-20
 

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 import 'package:tangent_sdk/src/services/billing_issue_service.dart';
+import 'package:tangent_sdk/src/services/facebook_service.dart';
 import 'package:tangent_sdk/src/services/iap_purchase_service.dart';
 import 'package:tangent_sdk/src/services/superwall_service.dart';
 import 'package:tangent_sdk/tangent_sdk.dart';
@@ -20,6 +21,7 @@ class TangentSDK {
   PaywallsService? _superwallService;
   BillingIssueService? _billingIssueService;
   AdjustAnalyticsService? _adjustService;
+  FacebookService? _facebookService;
 
   TangentSDK._(this._config);
 
@@ -119,6 +121,9 @@ class TangentSDK {
 
       // Initialize app tracking transparency
       if (_config.enableAppTrackingTransparency) requestTrackingAuthorization(),
+
+      // Initialize Facebook App Events
+      if (_config.enableFacebook) _initFacebook(),
     ]);
 
     // Initialize billing issue service
@@ -694,6 +699,13 @@ class TangentSDK {
   /// App should handle success/error states.
   Stream<RedemptionResult>? get didRedeemLinkStream =>
       _superwallService is SuperwallService ? (_superwallService as SuperwallService).didRedeemLinkStream : null;
+
+  /// Initialize Facebook App Events with auto-logging and advertiser tracking.
+  Future<void> _initFacebook() async {
+    AppLogger.info('Initializing Facebook App Events', tag: 'Facebook');
+    _facebookService = FacebookService();
+    await _facebookService!.initialize();
+  }
 
   /// Wire Superwall delegate callbacks to auto-fire early-funnel Adjust events.
   void _setupSuperwallFunnelCallbacks() {

@@ -57,6 +57,19 @@ Added early-funnel Adjust event tracking to the Tangent SDK for Meta optimizatio
 - All auto-fire paths use try/catch — failures are logged but never block the purchase flow
 - Explicit calls throw `ConfigurationException` if token is missing, `ServiceNotInitializedException` if Adjust is not initialized
 
+## Facebook App Events Integration
+
+### `lib/src/services/facebook_service.dart` (new file)
+- `FacebookService` with `initialize()` — enables auto-logging and advertiser tracking
+- Auto-logs: app installs, app opens, in-app purchases (via StoreKit/Play Billing)
+
+### Config
+- `enableFacebook` bool in `TangentConfig` (default `false`)
+
+### Wiring
+- Initialized in `_initializeServices()` via `Future.wait` (parallel with other optional services)
+- Complements Adjust funnel events — no overlap (Adjust handles funnel, Facebook handles install/open/purchase)
+
 ## Adjust Dashboard Setup (Manual)
 
 For each event token, configure the Meta (Facebook) partner mapping:

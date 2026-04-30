@@ -102,6 +102,14 @@ class TangentConfig {
   /// Defaults to `true`.
   final bool enableMixpanelSubscriptionSync;
 
+  /// Controls whether Facebook App Events is enabled.
+  ///
+  /// When `true`: Initializes the Facebook SDK with auto-logging and advertiser tracking.
+  /// Auto-logs app installs, app opens, and in-app purchases to Meta.
+  ///
+  /// Defaults to `false`.
+  final bool enableFacebook;
+
   /// Controls whether Adjust is automatically initialized during SDK setup.
   ///
   /// When `true` (default): Adjust initializes immediately in [TangentSDK.initialize].
@@ -134,6 +142,7 @@ class TangentConfig {
     this.autoTrackPaywallShown = true,
     this.autoTrackPaywallCheckoutShown = true,
     this.enableMixpanelSubscriptionSync = true,
+    this.enableFacebook = false,
     this.enableAutoInitAdjust = true,
   });
 }
