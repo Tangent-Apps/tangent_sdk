@@ -1,6 +1,6 @@
 name: tangent_sdk
 description: "A comprehensive SDK wrapper for Firebase, Mixpanel, Adjust, and Superwall with unified analytics, crash reporting, and paywall management."
-version: 0.3.0
+version: 0.4.0
 homepage:
 
 environment:

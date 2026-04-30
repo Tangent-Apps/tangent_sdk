@@ -47,6 +47,45 @@ class TangentConfig {
 
   final String? adjustConsumableToken;
 
+  /// Adjust event token for tracking when the user starts onboarding.
+  /// Optional — only fires if provided. Used for funnel debugging, not Meta optimization.
+  final String? adjustOnboardingStartedToken;
+
+  /// Adjust event token for tracking when the user completes onboarding.
+  /// Maps to Meta `CompleteRegistration` event via Adjust partner config.
+  final String? adjustOnboardingCompletedToken;
+
+  /// Adjust event token for tracking when a paywall screen becomes visible.
+  /// Maps to Meta `ViewContent` event via Adjust partner config.
+  final String? adjustPaywallShownToken;
+
+  /// Adjust event token for tracking when the purchase/checkout sheet is displayed.
+  /// Maps to Meta `InitiateCheckout` event via Adjust partner config.
+  final String? adjustPaywallCheckoutShownToken;
+
+  /// Controls whether `paywall_shown` is automatically tracked via Superwall delegate.
+  ///
+  /// When `true` (default): The SDK fires the Adjust event automatically when
+  /// Superwall presents a paywall (via `didPresentPaywall` delegate).
+  ///
+  /// When `false`: You must manually call [trackPaywallShown].
+  ///
+  /// Requires [adjustPaywallShownToken] to be set.
+  /// Defaults to `true`.
+  final bool autoTrackPaywallShown;
+
+  /// Controls whether `paywall_checkout_shown` is automatically tracked.
+  ///
+  /// When `true` (default): The SDK fires the Adjust event automatically when
+  /// a purchase flow begins — via Superwall delegate (transaction start) or
+  /// at the start of [purchaseProduct] for custom paywalls.
+  ///
+  /// When `false`: You must manually call [trackPaywallCheckoutShown].
+  ///
+  /// Requires [adjustPaywallCheckoutShownToken] to be set.
+  /// Defaults to `true`.
+  final bool autoTrackPaywallCheckoutShown;
+
   /// Controls whether subscription data is automatically synced to Mixpanel People.
   ///
   /// When `true` (default): The SDK automatically syncs subscription data to Mixpanel People
@@ -88,6 +127,12 @@ class TangentConfig {
     this.superwallAndroidApiKey,
     this.enableAppTrackingTransparency = true,
     this.adjustConsumableToken,
+    this.adjustOnboardingStartedToken,
+    this.adjustOnboardingCompletedToken,
+    this.adjustPaywallShownToken,
+    this.adjustPaywallCheckoutShownToken,
+    this.autoTrackPaywallShown = true,
+    this.autoTrackPaywallCheckoutShown = true,
     this.enableMixpanelSubscriptionSync = true,
     this.enableAutoInitAdjust = true,
   });

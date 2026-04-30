@@ -175,6 +175,9 @@ class TangentSDK {
 
       await _superwallService!.initialize();
 
+      // Wire auto-fire callbacks for early-funnel Adjust events
+      _setupSuperwallFunnelCallbacks();
+
       if (userId != null) {
         await _superwallService!.identifyUser(userId);
       }
@@ -214,6 +217,83 @@ class TangentSDK {
       return superwall.setAdjustId(adjustId);
     }
     return Future.value();
+  }
+
+  // MARK: - Early-Funnel Adjust Events
+
+  /// Track when the user starts onboarding.
+  /// Requires [TangentConfig.adjustOnboardingStartedToken] to be set.
+  Future<void> trackOnboardingStarted() async {
+    _fireAdjustFunnelEvent(
+      token: _config.adjustOnboardingStartedToken,
+      tokenName: 'adjustOnboardingStartedToken',
+      tag: 'Adjust-Funnel',
+    );
+  }
+
+  /// Track when the user completes onboarding.
+  /// Maps to Meta `CompleteRegistration` via Adjust partner config.
+  /// Requires [TangentConfig.adjustOnboardingCompletedToken] to be set.
+  Future<void> trackOnboardingCompleted() async {
+    _fireAdjustFunnelEvent(
+      token: _config.adjustOnboardingCompletedToken,
+      tokenName: 'adjustOnboardingCompletedToken',
+      tag: 'Adjust-Funnel',
+    );
+  }
+
+  /// Track when a paywall screen becomes visible.
+  /// Maps to Meta `ViewContent` via Adjust partner config.
+  /// Requires [TangentConfig.adjustPaywallShownToken] to be set.
+  ///
+  /// Auto-fired by Superwall delegate when [TangentConfig.autoTrackPaywallShown] is `true`.
+  /// Call manually for custom paywalls or when auto-tracking is disabled.
+  Future<void> trackPaywallShown() async {
+    _fireAdjustFunnelEvent(
+      token: _config.adjustPaywallShownToken,
+      tokenName: 'adjustPaywallShownToken',
+      tag: 'Adjust-Funnel',
+    );
+  }
+
+  /// Track when the purchase/checkout sheet is displayed.
+  /// Maps to Meta `InitiateCheckout` via Adjust partner config.
+  /// Requires [TangentConfig.adjustPaywallCheckoutShownToken] to be set.
+  ///
+  /// Auto-fired by Superwall delegate (transaction start) and at the start of
+  /// [purchaseProduct] when [TangentConfig.autoTrackPaywallCheckoutShown] is `true`.
+  /// Call manually when auto-tracking is disabled.
+  Future<void> trackPaywallCheckoutShown() async {
+    _fireAdjustFunnelEvent(
+      token: _config.adjustPaywallCheckoutShownToken,
+      tokenName: 'adjustPaywallCheckoutShownToken',
+      tag: 'Adjust-Funnel',
+    );
+  }
+
+  /// Track a generic Adjust event by token (no revenue).
+  /// Use for ad-hoc funnel events not covered by the dedicated methods.
+  Future<void> trackAdjustEvent(String eventToken, {Map<String, String>? properties}) async {
+    if (_adjustService == null) {
+      throw const ServiceNotInitializedException('AdjustAnalyticsService');
+    }
+    await _adjustService!.trackFunnelEvent(eventToken, properties: properties);
+  }
+
+  /// Internal helper: validates token presence, fires the Adjust funnel event.
+  void _fireAdjustFunnelEvent({
+    required String? token,
+    required String tokenName,
+    required String tag,
+  }) {
+    if (token == null || token.isEmpty) {
+      throw ConfigurationException('$tokenName: Token must be set in TangentConfig to track this event');
+    }
+    if (_adjustService == null) {
+      throw const ServiceNotInitializedException('AdjustAnalyticsService');
+    }
+    _adjustService!.trackFunnelEvent(token);
+    AppLogger.info('Tracked funnel event: $tokenName', tag: tag);
   }
 
   /// Record an error to the crash reporting service.
@@ -523,6 +603,19 @@ class TangentSDK {
     String? eventName,
     Map<String, String>? context,
   }) async {
+    // Auto-fire paywall_checkout_shown for custom paywall path
+    if (_config.autoTrackPaywallCheckoutShown && _config.adjustPaywallCheckoutShownToken != null) {
+      try {
+        _fireAdjustFunnelEvent(
+          token: _config.adjustPaywallCheckoutShownToken,
+          tokenName: 'adjustPaywallCheckoutShownToken',
+          tag: 'Adjust-Funnel',
+        );
+      } catch (e) {
+        AppLogger.error('Auto-track paywall_checkout_shown failed: $e', tag: 'Adjust-Funnel');
+      }
+    }
+
     final productResult = await _iapService?.purchaseProduct(product);
 
     if (productResult == null) {
@@ -601,6 +694,40 @@ class TangentSDK {
   /// App should handle success/error states.
   Stream<RedemptionResult>? get didRedeemLinkStream =>
       _superwallService is SuperwallService ? (_superwallService as SuperwallService).didRedeemLinkStream : null;
+
+  /// Wire Superwall delegate callbacks to auto-fire early-funnel Adjust events.
+  void _setupSuperwallFunnelCallbacks() {
+    final superwall = _superwallService;
+    if (superwall is! SuperwallService) return;
+
+    if (_config.autoTrackPaywallShown && _config.adjustPaywallShownToken != null) {
+      superwall.onPaywallPresented = () {
+        try {
+          _fireAdjustFunnelEvent(
+            token: _config.adjustPaywallShownToken,
+            tokenName: 'adjustPaywallShownToken',
+            tag: 'Adjust-Funnel',
+          );
+        } catch (e) {
+          AppLogger.error('Auto-track paywall_shown failed: $e', tag: 'Adjust-Funnel');
+        }
+      };
+    }
+
+    if (_config.autoTrackPaywallCheckoutShown && _config.adjustPaywallCheckoutShownToken != null) {
+      superwall.onTransactionStart = () {
+        try {
+          _fireAdjustFunnelEvent(
+            token: _config.adjustPaywallCheckoutShownToken,
+            tokenName: 'adjustPaywallCheckoutShownToken',
+            tag: 'Adjust-Funnel',
+          );
+        } catch (e) {
+          AppLogger.error('Auto-track paywall_checkout_shown failed: $e', tag: 'Adjust-Funnel');
+        }
+      };
+    }
+  }
 
   /// Sync subscription status to Superwall by setting active entitlements
   Future<void> _syncSubscriptionToSuperwall() async {

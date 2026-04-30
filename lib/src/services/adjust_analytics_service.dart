@@ -107,6 +107,23 @@ class AdjustAnalyticsService implements AnalyticsService {
     return resultOfAsync(() async {});
   }
 
+  /// Track a simple funnel event (no revenue) with campaign parameters.
+  Future<Result<void>> trackFunnelEvent(String eventToken, {Map<String, String>? properties}) async {
+    final event = AdjustEvent(eventToken);
+
+    if (properties != null) {
+      properties.forEach((key, value) {
+        event.addCallbackParameter(key, value);
+      });
+    }
+
+    event.addCallbackParameter('tangent_sdk_version', tangentSdkVersion);
+    await _addCampaignParameters(event);
+
+    Adjust.trackEvent(event);
+    return const Success(null);
+  }
+
   /// Get the Adjust attribution ID
   Future<String?> getAdjustId() async {
     try {

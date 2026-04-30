@@ -13,6 +13,12 @@ class SuperwallService extends PaywallsService implements SuperwallDelegate {
   final String iOSApiKey;
   final String androidApiKey;
 
+  /// Called when Superwall presents a paywall (auto-fire paywall_shown).
+  void Function()? onPaywallPresented;
+
+  /// Called when Superwall starts a transaction (auto-fire paywall_checkout_shown).
+  void Function()? onTransactionStart;
+
   bool _isInitialized = false;
 
   final StreamController<bool> _subscriptionStatusController = StreamController<bool>.broadcast();
@@ -276,7 +282,11 @@ class SuperwallService extends PaywallsService implements SuperwallDelegate {
   }
 
   @override
-  void handleSuperwallEvent(SuperwallEventInfo eventInfo) {}
+  void handleSuperwallEvent(SuperwallEventInfo eventInfo) {
+    if (eventInfo.event.type == EventType.transactionStart) {
+      onTransactionStart?.call();
+    }
+  }
 
   @override
   void handleCustomPaywallAction(String name) {}
@@ -291,7 +301,9 @@ class SuperwallService extends PaywallsService implements SuperwallDelegate {
   void didDismissPaywall(PaywallInfo paywallInfo) {}
 
   @override
-  void didPresentPaywall(PaywallInfo paywallInfo) {}
+  void didPresentPaywall(PaywallInfo paywallInfo) {
+    onPaywallPresented?.call();
+  }
 
   @override
   void paywallWillOpenURL(Uri url) {}

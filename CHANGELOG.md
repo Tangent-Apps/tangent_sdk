@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-30
+
+### Added
+
+- **Early-funnel Adjust events** for Meta optimization — track onboarding and paywall milestones as Adjust events mapped to Meta partner events
+- `trackOnboardingStarted()` — fires when user starts onboarding (optional, funnel debugging)
+- `trackOnboardingCompleted()` — fires when user finishes onboarding (Meta `CompleteRegistration`)
+- `trackPaywallShown()` — fires when paywall screen becomes visible (Meta `ViewContent`)
+- `trackPaywallCheckoutShown()` — fires when purchase/checkout sheet is displayed (Meta `InitiateCheckout`)
+- `trackAdjustEvent(String token)` — generic method for ad-hoc Adjust events without revenue
+- `AdjustAnalyticsService.trackFunnelEvent()` — internal method for firing token-only Adjust events with campaign params
+- Config tokens: `adjustOnboardingStartedToken`, `adjustOnboardingCompletedToken`, `adjustPaywallShownToken`, `adjustPaywallCheckoutShownToken`
+- `autoTrackPaywallShown` config flag (default `true`) — auto-fires `paywall_shown` via Superwall `didPresentPaywall` delegate
+- `autoTrackPaywallCheckoutShown` config flag (default `true`) — auto-fires `paywall_checkout_shown` via Superwall `transactionStart` delegate and at the start of `purchaseProduct()` for custom paywalls
+- Superwall delegate callbacks: `onPaywallPresented` and `onTransactionStart` on `SuperwallService`
+
 ## [0.3.0] - 2026-04-20
 
 ### Added
