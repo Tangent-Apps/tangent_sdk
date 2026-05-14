@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:superwallkit_flutter/superwallkit_flutter.dart';
 import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
+import 'package:tangent_sdk/src/core/model/subscription_details.dart';
 import 'package:tangent_sdk/src/core/service/paywalls_service.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
@@ -246,6 +247,33 @@ class SuperwallService extends PaywallsService implements SuperwallDelegate {
     } catch (e, stackTrace) {
       AppLogger.error('Failed to get subscription status', error: e, stackTrace: stackTrace, tag: superwallTag);
       return Failure(ServiceOperationException('get subscription status', e));
+    }
+  }
+
+  @override
+  Future<Result<SubscriptionDetailsModel>> getSubscriptionDetails() async {
+    try {
+      _ensureInitialized();
+
+      AppLogger.info('Fetching subscription details from entitlements', tag: superwallTag);
+      final entitlements = await Superwall.shared.getEntitlements();
+
+      final isWebSubscriber = entitlements.active.any(
+        (e) => e.store == ProductStore.stripe,
+      );
+      final hasUsedTrial = entitlements.all.any(
+        (e) => e.offerType == LatestSubscriptionOfferType.trial,
+      );
+
+      final details = SubscriptionDetailsModel(
+        isWebSubscriber: isWebSubscriber,
+        hasUsedTrial: hasUsedTrial,
+      );
+      AppLogger.info('Subscription details: $details', tag: superwallTag);
+      return Success(details);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get subscription details', error: e, stackTrace: stackTrace, tag: superwallTag);
+      return Failure(ServiceOperationException('get subscription details', e));
     }
   }
 

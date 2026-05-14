@@ -7,22 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-14
+
+### Added
+
+- Fixed `superwallkit_flutter` from `^4.15.1` to `^2.4.12`
+- **Subscription Details API**: New `getSubscriptionDetails()` method that computes subscription origin and trial usage
+  from Superwall entitlements
+- `SubscriptionDetailsModel` — immutable model with `isWebSubscriber` (Stripe store detection) and `hasUsedTrial` (trial
+  offer detection) fields
+- Added `getSubscriptionDetails()` to `PaywallsService` interface and `SuperwallService` implementation
+- Exported `SubscriptionDetailsModel` from barrel file
+
+## [0.4.1] - 2026-05-06
+
+### Changed
+
+- **Dependency Update**: Upgraded `superwallkit_flutter` from `^2.4.12` to `^4.15.1` for latest Superwall SDK features
+  and improvements
+
 ## [0.4.0] - 2026-04-30
 
 ### Added
 
-- **Early-funnel Adjust events** for Meta optimization — track onboarding and paywall milestones as Adjust events mapped to Meta partner events
+- **Early-funnel Adjust events** for Meta optimization — track onboarding and paywall milestones as Adjust events mapped
+  to Meta partner events
 - `trackOnboardingStarted()` — fires when user starts onboarding (optional, funnel debugging)
 - `trackOnboardingCompleted()` — fires when user finishes onboarding (Meta `CompleteRegistration`)
 - `trackPaywallShown()` — fires when paywall screen becomes visible (Meta `ViewContent`)
 - `trackPaywallCheckoutShown()` — fires when purchase/checkout sheet is displayed (Meta `InitiateCheckout`)
 - `trackAdjustEvent(String token)` — generic method for ad-hoc Adjust events without revenue
 - `AdjustAnalyticsService.trackFunnelEvent()` — internal method for firing token-only Adjust events with campaign params
-- Config tokens: `adjustOnboardingStartedToken`, `adjustOnboardingCompletedToken`, `adjustPaywallShownToken`, `adjustPaywallCheckoutShownToken`
-- `autoTrackPaywallShown` config flag (default `true`) — auto-fires `paywall_shown` via Superwall `didPresentPaywall` delegate
-- `autoTrackPaywallCheckoutShown` config flag (default `true`) — auto-fires `paywall_checkout_shown` via Superwall `transactionStart` delegate and at the start of `purchaseProduct()` for custom paywalls
+- Config tokens: `adjustOnboardingStartedToken`, `adjustOnboardingCompletedToken`, `adjustPaywallShownToken`,
+  `adjustPaywallCheckoutShownToken`
+- `autoTrackPaywallShown` config flag (default `true`) — auto-fires `paywall_shown` via Superwall `didPresentPaywall`
+  delegate
+- `autoTrackPaywallCheckoutShown` config flag (default `true`) — auto-fires `paywall_checkout_shown` via Superwall
+  `transactionStart` delegate and at the start of `purchaseProduct()` for custom paywalls
 - Superwall delegate callbacks: `onPaywallPresented` and `onTransactionStart` on `SuperwallService`
-- **Facebook App Events integration**: `enableFacebook` config flag to initialize Facebook SDK with auto-logging (installs, opens, purchases) and advertiser tracking for Meta signal
+- **Facebook App Events integration**: `enableFacebook` config flag to initialize Facebook SDK with auto-logging (
+  installs, opens, purchases) and advertiser tracking for Meta signal
 
 ## [0.3.0] - 2026-04-20
 
@@ -33,7 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `willRedeemLinkStream` — fires before Superwall redeems a web checkout code (show loading UI)
 - `didRedeemLinkStream` — fires with `RedemptionResult` after redemption completes (handle success/error)
 - `subscriptionStatusDidChange` delegate callback now drives `subscriptionStatusStream` directly
-- Re-exported `RedemptionResult`, `RedemptionResultSuccess`, `RedemptionResultError`, `RedemptionResultExpiredCode`, `RedemptionResultInvalidCode`, `RedemptionResultExpiredSubscription`, `RedemptionInfo`, `ErrorInfo`, `ExpiredCodeInfo`, `PurchaserInfo`, `StoreIdentifiers`, `StripeStoreIdentifiers` from `superwallkit_flutter`
+- Re-exported `RedemptionResult`, `RedemptionResultSuccess`, `RedemptionResultError`, `RedemptionResultExpiredCode`,
+  `RedemptionResultInvalidCode`, `RedemptionResultExpiredSubscription`, `RedemptionInfo`, `ErrorInfo`,
+  `ExpiredCodeInfo`, `PurchaserInfo`, `StoreIdentifiers`, `StripeStoreIdentifiers` from `superwallkit_flutter`
 
 ### Changed
 
@@ -44,17 +70,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `enableAutoInitAdjust` config flag — set to `false` to defer Adjust initialization until after the ATT prompt, then call `initAdjust()` manually
+- `enableAutoInitAdjust` config flag — set to `false` to defer Adjust initialization until after the ATT prompt, then
+  call `initAdjust()` manually
 - `initAdjust()` — public method to initialize Adjust on demand (mirrors the existing `initSuperwall()` pattern)
 - `getAdjustId()` — exposes Adjust's device ID (`adid`); available after `initAdjust()`, no ATT required
-- `setSuperwallAdjustId(String adjustId)` — sets the Adjust ID as a Superwall `IntegrationAttribute` so Superwall can forward revenue events to Adjust server-side
+- `setSuperwallAdjustId(String adjustId)` — sets the Adjust ID as a Superwall `IntegrationAttribute` so Superwall can
+  forward revenue events to Adjust server-side
 
 ## [0.2.0] - 2026-04-03
 
 ### Breaking Changes
 
 - **Removed RevenueCat**: Replaced `purchases_flutter` with `in_app_purchase` for native in-app purchase management
-- **Superwall native mode**: Superwall no longer uses a `PurchaseController` (RevenueCat integration removed); it runs in native mode
+- **Superwall native mode**: Superwall no longer uses a `PurchaseController` (RevenueCat integration removed); it runs
+  in native mode
 - **Removed `enableRevenue` config**: Revenue/purchase functionality is always available via `in_app_purchase`
 - **Removed `revenueCatApiKey` config**: No longer needed
 - **Removed `enableRevenueCatAdjustIntegration` config**: S2S integration with RevenueCat removed
@@ -143,17 +172,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ```dart
 // Access new CustomerPurchasesInfo fields
-TangentSDK.instance.customerPurchasesInfoStream.listen((info) {
-  // User acquisition date
-  print('First seen: ${info.firstSeen}');
+TangentSDK.instance.customerPurchasesInfoStream.listen
+(
+(info) {
+// User acquisition date
+print('First seen: ${info.firstSeen}');
 
-  // All products ever purchased
-  print('Purchased products: ${info.allPurchasedProductIds}');
+// All products ever purchased
+print('Purchased products: ${info.allPurchasedProductIds}');
 
-  // Consumable purchase history
-  for (final tx in info.nonSubscriptionTransactions) {
-    print('Consumable: ${tx.productId} on ${tx.purchaseDate}');
-  }
+// Consumable purchase history
+for (final tx in info.nonSubscriptionTransactions) {
+print('Consumable: ${tx.productId} on ${tx.purchaseDate}');
+}
 });
 ```
 
@@ -198,34 +229,43 @@ TangentSDK.instance.customerPurchasesInfoStream.listen((info) {
     - Previous: `Map<String, bool>` showing only active status
     - Now: `List<Entitlement>` with purchase dates, expiration, renewal status, and more
 - **PurchasesService Interface**: Added `getEntitlements()` method to service contract
-- **RevenueCatService Implementation**: Full implementation of entitlement retrieval with automatic conversion from RevenueCat data
+- **RevenueCatService Implementation**: Full implementation of entitlement retrieval with automatic conversion from
+  RevenueCat data
 
 ### Examples
 
 ```dart
 // Retrieve all entitlements
-final result = await TangentSDK.instance.getEntitlements();
+final result = await
+TangentSDK.instance.getEntitlements
+();
 
-result.when(
-  success: (entitlements) {
-    // Access detailed entitlement information
-    for (final entitlement in entitlements) {
-      print('Entitlement: ${entitlement.identifier}');
-      print('  Product: ${entitlement.productIdentifier}');
-      print('  Active: ${entitlement.isActive}');
-      print('  Expires: ${entitlement.expirationDate}');
-      print('  Will Renew: ${entitlement.willRenew}');
-    }
+result.when
+(
+success: (entitlements) {
+// Access detailed entitlement information
+for (final entitlement in entitlements) {
+print('Entitlement: ${entitlement.identifier}');
+print('  Product: ${entitlement.productIdentifier}');
+print('  Active: ${entitlement.isActive}');
+print('  Expires: ${entitlement.expirationDate}');
+print('  Will Renew: ${entitlement.willRenew}');
+}
 
-    // Filter active entitlements
-    final active = entitlements.where((e) => e.isActive).toList();
+// Filter active entitlements
+final active = entitlements.where((e) => e.isActive).toList();
 
-    // Check specific entitlement
-    final hasPremium = entitlements.any(
-      (e) => e.identifier == 'premium' && e.isActive
-    );
-  },
-  failure: (error) => print('Error: $error'),
+// Check specific entitlement
+final hasPremium = entitlements.any(
+(e) => e.identifier == 'premium' && e.isActive
+);
+},
+failure: (error) => print('Error: 
+$
+error
+'
+)
+,
 );
 ```
 
@@ -255,17 +295,19 @@ result.when(
 
 ```dart
 // Set context before Superwall purchase
-TangentSDK.instance.setPurchaseContext({
-  'book_title': 'Flutter Mastery',
-  'chapter': 'Chapter 5',
-  'source_screen': 'reading_page'
-});
-await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
+TangentSDK.instance.setPurchaseContext
+(
+{'book_title': 'Flutter Mastery',
+'chapter': 'Chapter 5',
+'source_screen': 'reading_page
+'
+}
+);await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
 
 // Direct purchase with context
 await TangentSDK.instance.purchaseProductById(
-  'premium_monthly',
-  context: {'book_title': 'Flutter Guide'}
+'premium_monthly',
+context: {'book_title': 'Flutter Guide'}
 );
 ```
 

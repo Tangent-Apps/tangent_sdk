@@ -1,3 +1,4 @@
+import 'package:tangent_sdk/src/core/model/subscription_details.dart';
 import 'package:tangent_sdk/src/core/types/result.dart';
 
 abstract class PaywallsService {
@@ -24,6 +25,9 @@ abstract class PaywallsService {
   Future<Result<void>> refreshSubscriptionStatus();
 
   Future<Result<bool>> getSubscriptionStatus();
+
+  /// Fetches subscription details (web subscriber status, trial usage) from entitlements.
+  Future<Result<SubscriptionDetailsModel>> getSubscriptionDetails();
 
   Stream<bool> get subscriptionStatusStream;
 }

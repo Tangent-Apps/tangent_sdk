@@ -1,6 +1,7 @@
 # Tangent SDK
 
-A comprehensive Flutter SDK wrapper for Firebase, Mixpanel, Adjust, Superwall, in_app_purchase, App Tracking Transparency, and In-App Review with unified analytics, crash reporting, and paywall management.
+A comprehensive Flutter SDK wrapper for Firebase, Mixpanel, Adjust, Superwall, in_app_purchase, App Tracking
+Transparency, and In-App Review with unified analytics, crash reporting, and paywall management.
 
 ## Features
 
@@ -22,7 +23,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  tangent_sdk: ^0.3.0
+  tangent_sdk: ^0.4.1
 ```
 
 Then run:
@@ -50,7 +51,7 @@ dependencies:
   in_app_purchase: ^3.2.0
 
   # Superwall
-  superwallkit_flutter: ^2.4.11
+  superwallkit_flutter: ^4.15.1
 
   # App Tracking Transparency
   app_tracking_transparency: ^2.0.6+1
@@ -206,8 +207,7 @@ error
 
 final productsResult = await
 TangentSDK.instance.getProducts
-(['
-premium_monthly
+(['premium_monthly
 '
 ]
 );productsResult.when(
@@ -242,30 +242,35 @@ Mixpanel analytics:
 
 ```dart
 // Set context before any purchase
-TangentSDK.instance.setPurchaseContext({
-  'book_title': 'Flutter Mastery',
-  'chapter': 'Chapter 5',
-  'source_screen': 'reading_page',
-  'user_level': 'beginner'
-});
+TangentSDK.instance.setPurchaseContext
+(
+{'book_title': 'Flutter Mastery',
+'chapter': 'Chapter 5',
+'source_screen': 'reading_page',
+'user_level': 'beginner'
+}
+);
 
 // Purchase through Superwall (context automatically included)
 await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
 
 // Or purchase directly (context automatically included)
-await TangentSDK.instance.purchaseProductById('premium_monthly');
+await TangentSDK.instance.purchaseProductById('premium_monthly'
+);
 ```
 
 **Option 2: Pass context directly in purchase methods**
 
 ```dart
 // Direct context in purchase call
-final result = await TangentSDK.instance.purchaseProductById(
-  'premium_monthly',
-  context: {
-    'book_title': 'Flutter Advanced',
-    'chapter': 'State Management'
-  }
+final result = await
+TangentSDK.instance.purchaseProductById
+('premium_monthly
+'
+,context: {
+'book_title': 'Flutter Advanced',
+'chapter': 'State Management'
+}
 );
 
 // Context overrides any pending context from setPurchaseContext()
@@ -278,7 +283,8 @@ final result = await TangentSDK.instance.purchaseProductById(
 final context = TangentSDK.instance.purchaseContext;
 
 // Clear context
-TangentSDK.instance.clearPurchaseContext();
+TangentSDK.instance.clearPurchaseContext
+();
 ```
 
 **Analytics Integration**
@@ -315,9 +321,11 @@ failure: (error) => print('Error: $error'),
 
 ### Deferred Adjust Initialization & Superwall Integration
 
-By default Adjust initializes at SDK startup, which means the install event fires before the ATT prompt. To send the install event after the user responds to ATT, use `enableAutoInitAdjust: false` and call `initAdjust()` manually.
+By default Adjust initializes at SDK startup, which means the install event fires before the ATT prompt. To send the
+install event after the user responds to ATT, use `enableAutoInitAdjust: false` and call `initAdjust()` manually.
 
 ```dart
+
 final config = TangentConfig(
   adjustAppToken: 'your_adjust_token',
   environment: TangentEnvironment.production,
@@ -325,7 +333,10 @@ final config = TangentConfig(
   // ...
 );
 
-await TangentSDK.initialize(config: config);
+await
+TangentSDK.initialize
+(
+config: config);
 
 // Show ATT prompt first
 await TangentSDK.instance.requestTrackingAuthorization();
@@ -336,13 +347,14 @@ await TangentSDK.instance.initAdjust();
 // Set Adjust ID on Superwall so it can forward revenue events server-side
 final adjustId = await TangentSDK.instance.getAdjustId();
 if (adjustId != null) {
-  await TangentSDK.instance.setSuperwallAdjustId(adjustId);
+await TangentSDK.instance.setSuperwallAdjustId(adjustId);
 }
 ```
 
 ### Superwall Stripe Checkout (Web Payments)
 
-Superwall can present Stripe-powered checkout pages in an in-app webview. After the user pays, Superwall redirects back to your app via a deep link with a redemption code. The SDK handles the full flow automatically.
+Superwall can present Stripe-powered checkout pages in an in-app webview. After the user pays, Superwall redirects back
+to your app via a deep link with a redemption code. The SDK handles the full flow automatically.
 
 **Setup:**
 
@@ -351,44 +363,52 @@ Superwall can present Stripe-powered checkout pages in an in-app webview. After 
 
 ```dart
 // In your deep link handler (e.g., GoRouter redirect, uni_links listener)
-await TangentSDK.instance.superwallHandleDeepLink(uri);
+await
+TangentSDK.instance.superwallHandleDeepLink
+(
+uri
+);
 ```
 
 3. Listen for redemption events to update your UI:
 
 ```dart
 // Show loading when redemption starts
-TangentSDK.instance.willRedeemLinkStream?.listen((_) {
-  // Show loading indicator
+TangentSDK.instance.willRedeemLinkStream?.listen
+(
+(_) {
+// Show loading indicator
 });
 
 // Handle redemption result
 TangentSDK.instance.didRedeemLinkStream?.listen((result) {
-  switch (result) {
-    case RedemptionResultSuccess():
-      // Subscription activated — unlock content
-      break;
-    case RedemptionResultError():
-      // Show error to user
-      break;
-    case RedemptionResultExpiredCode():
-      // Code expired
-      break;
-    case RedemptionResultInvalidCode():
-      // Invalid code
-      break;
-    case RedemptionResultExpiredSubscription():
-      // Subscription already expired
-      break;
-  }
+switch (result) {
+case RedemptionResultSuccess():
+// Subscription activated — unlock content
+break;
+case RedemptionResultError():
+// Show error to user
+break;
+case RedemptionResultExpiredCode():
+// Code expired
+break;
+case RedemptionResultInvalidCode():
+// Invalid code
+break;
+case RedemptionResultExpiredSubscription():
+// Subscription already expired
+break;
+}
 });
 ```
 
 4. Subscription status updates automatically via `subscriptionStatusStream`:
 
 ```dart
-TangentSDK.instance.subscriptionStatusStream.listen((isActive) {
-  // Update UI based on subscription state
+TangentSDK.instance.subscriptionStatusStream.listen
+(
+(isActive) {
+// Update UI based on subscription state
 });
 ```
 
@@ -409,8 +429,7 @@ TangentSDK.instance.requestTrackingAuthorization
 final status = await
 TangentSDK.instance.getTrackingStatus
 ();print
-('Tracking status:
-$status'
+('Tracking status:$status'
 );
 ```
 
@@ -421,8 +440,7 @@ $status'
 final adId = await
 TangentSDK.instance.getAdvertisingIdentifier
 ();print
-('Ad ID:
-$adId'
+('Ad ID:$adId'
 );
 ```
 
@@ -494,21 +512,21 @@ TangentSDK.instance.log
 
 ### TangentConfig
 
-| Parameter                        | Type                | Required | Default | Description                                      |
-| -------------------------------- | ------------------- | -------- | ------- | ------------------------------------------------ |
-| `mixpanelToken`                  | String?             | No       | null    | Mixpanel project token                           |
-| `adjustAppToken`                 | String?             | No       | null    | Adjust app token                                 |
-| `environment`                    | TangentEnvironment? | No       | null    | Adjust environment (production/sandbox)          |
-| `adjustSubscriptionToken`        | String?             | No       | null    | Adjust in-app subscription event token           |
-| `adjustSubscriptionRenewalToken` | String?             | No       | null    | Adjust renewal event token                       |
-| `automaticTrackSubscription`     | bool                | No       | true    | Automatically log subscription events via Adjust |
-| `enableCrashlytics`              | bool                | No       | true    | Enable Firebase Crashlytics                      |
-| `enableAppCheck`                 | bool                | No       | true    | Enable Firebase App Check                        |
-| `enableAnalytics`                | bool                | No       | true    | Enable analytics services                        |
-| `enableSuperwall`                | bool                | No       | true    | Enable Superwall paywall service                 |
-| `enableAutoInitSuperwall`        | bool                | No       | true    | Auto-initialize Superwall during SDK setup       |
-| `superwallIOSApiKey`             | String?             | No       | null    | Superwall iOS API key                            |
-| `superwallAndroidApiKey`         | String?             | No       | null    | Superwall Android API key                        |
+| Parameter                        | Type                | Required | Default | Description                                                                                       |
+|----------------------------------|---------------------|----------|---------|---------------------------------------------------------------------------------------------------|
+| `mixpanelToken`                  | String?             | No       | null    | Mixpanel project token                                                                            |
+| `adjustAppToken`                 | String?             | No       | null    | Adjust app token                                                                                  |
+| `environment`                    | TangentEnvironment? | No       | null    | Adjust environment (production/sandbox)                                                           |
+| `adjustSubscriptionToken`        | String?             | No       | null    | Adjust in-app subscription event token                                                            |
+| `adjustSubscriptionRenewalToken` | String?             | No       | null    | Adjust renewal event token                                                                        |
+| `automaticTrackSubscription`     | bool                | No       | true    | Automatically log subscription events via Adjust                                                  |
+| `enableCrashlytics`              | bool                | No       | true    | Enable Firebase Crashlytics                                                                       |
+| `enableAppCheck`                 | bool                | No       | true    | Enable Firebase App Check                                                                         |
+| `enableAnalytics`                | bool                | No       | true    | Enable analytics services                                                                         |
+| `enableSuperwall`                | bool                | No       | true    | Enable Superwall paywall service                                                                  |
+| `enableAutoInitSuperwall`        | bool                | No       | true    | Auto-initialize Superwall during SDK setup                                                        |
+| `superwallIOSApiKey`             | String?             | No       | null    | Superwall iOS API key                                                                             |
+| `superwallAndroidApiKey`         | String?             | No       | null    | Superwall Android API key                                                                         |
 | `enableAutoInitAdjust`           | bool                | No       | true    | Auto-initialize Adjust during SDK setup. Set to `false` to delay init until after the ATT prompt. |
 
 ### TangentEnvironment
@@ -566,8 +584,7 @@ All revenue-related methods return a `Result<T>` type that can be handled using 
 
 final result = await
 TangentSDK.instance.getProducts
-(['
-product_id
+(['product_id
 '
 ]
 );result.when(

@@ -657,6 +657,16 @@ class TangentSDK {
     return await _superwallService?.getSubscriptionStatus() ?? const Success(false);
   }
 
+  /// Fetches computed subscription details (web subscriber status, trial usage)
+  /// by reading Superwall entitlements.
+  Future<Result<SubscriptionDetailsModel>> getSubscriptionDetails() async {
+    if (_superwallService == null) {
+      AppLogger.error('Superwall service not initialized', tag: superwallTag);
+      return const Failure(ServiceNotInitializedException(superwallTag));
+    }
+    return await _superwallService!.getSubscriptionDetails();
+  }
+
   /// Check billing issue status via native StoreKit 2 (iOS) / Play Billing (Android)
   ///
   /// Returns [BillingStatus] with the current billing state.
