@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-09
+
+### Added
+
+- **Attribution API**: New `getAttribution()` passthrough on `TangentSDK` returning `Future<AdjustAttribution?>`
+- Re-exports `AdjustAttribution` from the barrel so consumers can name the return type without a direct `adjust_sdk` import
+
 ## [0.4.1] - 2026-05-14
 
 ### Added

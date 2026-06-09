@@ -1,6 +1,7 @@
 // src/tangent_sdk.dart
 import 'dart:async';
 
+import 'package:adjust_sdk/adjust_attribution.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:tangent_sdk/src/core/utils/app_logger.dart';
 import 'package:tangent_sdk/src/services/billing_issue_service.dart';
@@ -213,6 +214,11 @@ class TangentSDK {
 
   /// Returns Adjust's device ID (adid). Available after initAdjust(), no ATT required.
   Future<String?> getAdjustId() => _adjustService?.getAdjustId() ?? Future.value();
+
+  /// Returns the Adjust attribution (network, trackerName, clickLabel, …).
+  /// Available after initAdjust(). Null if Adjust isn't ready or has no data.
+  Future<AdjustAttribution?> getAttribution() =>
+      _adjustService?.getAttribution() ?? Future.value();
 
   /// Sets the Adjust device ID as a Superwall IntegrationAttribute so Superwall
   /// can forward revenue events to Adjust on the server side.

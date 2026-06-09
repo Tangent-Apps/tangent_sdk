@@ -30,6 +30,7 @@ export 'src/core/model/product.dart';
 export 'src/core/model/subscription_details.dart';
 export 'src/core/types/result.dart';
 export 'src/core/utils/error_handler.dart';
+export 'package:adjust_sdk/adjust_attribution.dart' show AdjustAttribution;
 export 'src/services/adjust_analytics_service.dart';
 export 'src/services/app_review_service.dart';
 export 'src/services/app_tracking_transparency_service.dart';
