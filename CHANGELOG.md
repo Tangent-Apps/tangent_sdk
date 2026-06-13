@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-10
+
+### Added
+
+- **Consumable purchases API**: New `purchaseConsumable()` on `TangentSDK` for coins/credits-style products.
+  Uses the store's consumable flow (`buyConsumable`, consumed on Android so it can be repurchased), tracks revenue to
+  Adjust via `adjustConsumableToken`, and — critically — NEVER syncs Superwall subscription status/entitlements.
+  Previously `purchaseProduct()` set the `Pro` entitlement after ANY purchase, which would mark consumable buyers as
+  subscribed.
+- **Purchase delivery handler**: New `setPurchaseDeliveryHandler()` — a handler awaited BEFORE each purchased
+  transaction is completed with the store, per StoreKit/Play guidance ("finish the transaction only after delivering
+  the content"). Returning `false`/throwing leaves the transaction unfinished so the store redelivers it on next
+  launch — guaranteeing content (e.g. coins) is never lost to a crash mid-purchase, Ask to Buy approvals, or
+  prior-session transactions.
+- **`purchaseUpdatedStream`**: Broadcast stream emitting `PurchasedProductDetails` after each transaction is delivered
+  and completed (including deferred and out-of-band transactions). Successor to the pre-0.4 `successPurchaseStream`
+  for passive consumers (success dialogs, analytics).
+- **`PurchasedProductDetails` model**: carries `productID`, `purchaseID` (for idempotent granting), `transactionDate`,
+  `status` (purchased vs restored), and `verificationData`/`verificationSource` for optional server-side receipt
+  validation. Exported from the barrel along with `PurchaseStatus`.
+
+### Changed
+
+- **`IAPPurchaseService` is now stream-first**: the store's `purchaseStream` is the single source of truth, matching
+  the official `in_app_purchase` architecture. Transactions are processed sequentially through one
+  deliver-then-complete path regardless of how they arrive. The `Future`-returning purchase methods are resolved from
+  the stream (per-product pending-request map) instead of a single parallel `Completer`, fixing two issues:
+  out-of-band transactions being silently completed without the app ever hearing about them, and concurrent purchases
+  of different products clobbering each other.
+- `purchaseProduct()` is now documented as the subscriptions/non-consumables API; its Superwall entitlement sync and
+  Adjust subscription event remain unchanged.
+- Error/cancelled transactions are still completed with the store, and a purchase request for a product that already
+  has one in flight fails fast with `purchase_in_progress`.
+
+### Fixed
+
+- **Purchases made on Superwall-presented paywalls are now delivered to the app.** Superwall finishes its paywall
+  StoreKit transactions itself, so they never reach the in_app_purchase stream — consumables bought on a Superwall
+  paywall were paid for but never granted. The SDK now hooks the Superwall delegate's `transactionComplete` event and
+  routes it through the same delivery pipeline (delivery handler + `purchaseUpdatedStream`), with the Superwall
+  `storeTransactionId` as `purchaseID` for idempotent granting. Restores are not routed (separate `transactionRestore`
+  event), so consumables cannot be re-granted by a restore.
+
+### Known limitations
+
+- Coin/consumable purchases are trusted client-side unless the app performs receipt validation inside the delivery
+  handler (Superwall validates subscription entitlements only).
+- Superwall-paywall transactions are delivered once per event: if the app's delivery handler fails at that moment, the
+  store will NOT redeliver (Superwall already finished the transaction). Keep delivery handlers fast and local.
+
 ## [0.4.2] - 2026-06-09
 
 ### Added

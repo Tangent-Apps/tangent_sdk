@@ -658,6 +658,69 @@ class TangentSDK {
     }
   }
 
+  /// Purchase a consumable product (coins, credits, …).
+  ///
+  /// Unlike [purchaseProduct], this NEVER touches Superwall subscription
+  /// status/entitlements — consumables must not activate a subscription.
+  /// Tracks revenue to Adjust via [TangentConfig.adjustConsumableToken]
+  /// (when configured) instead of the subscription event token.
+  ///
+  /// Uses the store's consumable purchase flow so the product is consumed
+  /// on Android and can be repurchased.
+  Future<Result<Product>> purchaseConsumable(
+    Product product, {
+    String? eventToken,
+    String? eventName,
+    Map<String, String>? context,
+  }) async {
+    final productResult = await _iapService?.purchaseConsumable(product);
+
+    if (productResult == null) {
+      throw const ServiceNotInitializedException('IAPPurchaseService');
+    }
+
+    if (productResult.isSuccess) {
+      final purchasedProduct = productResult.data;
+
+      final consumableToken = eventToken ?? _config.adjustConsumableToken;
+      if (consumableToken != null) {
+        _silentTrackSubscriptionEvent(
+          product: purchasedProduct,
+          eventToken: consumableToken,
+          eventName: eventName ?? 'consumable_purchase',
+          context: context,
+        );
+      } else {
+        AppLogger.info('No adjustConsumableToken configured, skipping Adjust consumable tracking', tag: 'IAP');
+      }
+
+      return Success(purchasedProduct);
+    } else {
+      return Failure(productResult.error);
+    }
+  }
+
+  /// Register the handler awaited before each purchased transaction is
+  /// completed with the store. See [PurchaseDeliveryHandler].
+  ///
+  /// Apps granting content themselves (e.g. crediting coins) MUST register
+  /// this at startup, before any purchase: the store redelivers unfinished
+  /// transactions from previous sessions as soon as the SDK initializes.
+  void setPurchaseDeliveryHandler(PurchaseDeliveryHandler? handler) {
+    final iapService = _iapService;
+    if (iapService == null) {
+      throw const ServiceNotInitializedException('IAPPurchaseService');
+    }
+    iapService.deliveryHandler = handler;
+  }
+
+  /// Emits after each transaction has been delivered and completed —
+  /// including deferred (Ask to Buy) and prior-session transactions.
+  /// For passive consumers (success dialogs, analytics); content granting
+  /// belongs in the delivery handler.
+  Stream<PurchasedProductDetails> get purchaseUpdatedStream =>
+      _iapService?.purchaseUpdatedStream ?? const Stream.empty();
+
   /// Check if the user has an active subscription (via Superwall)
   Future<Result<bool>> checkActiveSubscription() async {
     return await _superwallService?.getSubscriptionStatus() ?? const Success(false);
@@ -755,6 +818,27 @@ class TangentSDK {
         }
       };
     }
+
+    // Superwall finishes its paywall transactions itself, so they never reach
+    // the in_app_purchase stream. Route them through the same delivery
+    // pipeline so content (e.g. consumable coins) bought on a Superwall
+    // paywall is granted exactly like a direct purchase.
+    superwall.onTransactionComplete = (product, transaction) {
+      final productId = product?.productIdentifier;
+      if (productId == null) {
+        AppLogger.error('Superwall transactionComplete without product identifier', tag: superwallTag);
+        return;
+      }
+      final details = PurchasedProductDetails(
+        productID: productId,
+        purchaseID: transaction?.storeTransactionId ?? transaction?.originalTransactionIdentifier,
+        transactionDate: transaction?.transactionDate?.toIso8601String(),
+        status: PurchaseStatus.purchased,
+        verificationData: '',
+        verificationSource: 'superwall',
+      );
+      _iapService?.deliverExternalPurchase(details);
+    };
   }
 
   /// Sync subscription status to Superwall by setting active entitlements

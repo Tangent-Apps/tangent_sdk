@@ -20,6 +20,14 @@ class SuperwallService extends PaywallsService implements SuperwallDelegate {
   /// Called when Superwall starts a transaction (auto-fire paywall_checkout_shown).
   void Function()? onTransactionStart;
 
+  /// Called when a transaction made through a Superwall paywall completes.
+  ///
+  /// Superwall handles these StoreKit transactions itself, so they never reach
+  /// the in_app_purchase pipeline — without this hook, content purchased on a
+  /// Superwall paywall (e.g. consumable coins) would be paid for but never
+  /// delivered to the user.
+  void Function(StoreProduct? product, StoreTransaction? transaction)? onTransactionComplete;
+
   bool _isInitialized = false;
 
   final StreamController<bool> _subscriptionStatusController = StreamController<bool>.broadcast();
@@ -311,8 +319,24 @@ class SuperwallService extends PaywallsService implements SuperwallDelegate {
 
   @override
   void handleSuperwallEvent(SuperwallEventInfo eventInfo) {
+    AppLogger.info(
+      'Superwall event: ${eventInfo.event.type.name}'
+      '${eventInfo.event.product != null ? ' product=${eventInfo.event.product!.productIdentifier}' : ''}'
+      '${eventInfo.event.params != null ? ' params=${eventInfo.event.params}' : ''}',
+      tag: superwallTag,
+    );
     if (eventInfo.event.type == EventType.transactionStart) {
       onTransactionStart?.call();
+    }
+    if (eventInfo.event.type == EventType.transactionComplete) {
+      final product = eventInfo.event.product;
+      final transaction = eventInfo.event.transaction;
+      AppLogger.info(
+        'Superwall transaction complete: product=${product?.productIdentifier}, '
+        'txn=${transaction?.storeTransactionId ?? transaction?.originalTransactionIdentifier}',
+        tag: superwallTag,
+      );
+      onTransactionComplete?.call(product, transaction);
     }
   }
 

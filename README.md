@@ -178,120 +178,90 @@ failure: (error) => print('Error: $error'
 );
 ```
 
-#### Purchase Product by ID
+#### Purchase a Subscription / Non-Consumable
+
+`purchaseProduct` is for subscriptions and non-consumables only. On success it
+syncs subscription status to Superwall, fires the Adjust subscription event,
+and syncs to Mixpanel (when enabled in `TangentConfig`).
 
 ```dart
+final productsResult = await TangentSDK.instance.getProducts(['premium_monthly']);
+productsResult.when(
+  success: (products) async {
+    if (products.isNotEmpty) {
+      final result = await TangentSDK.instance.purchaseProduct(
+        products.first,
+        eventToken: 'your_adjust_event_token', // Optional, defaults to adjustSubscriptionToken
+        eventName: 'premium_subscription',     // Optional
+        context: {'source_screen': 'paywall'}, // Optional, sent to Adjust callback params
+      );
+      result.when(
+        success: (product) => print('Purchased product: $product'),
+        failure: (error) => print('Error: $error'),
+      );
+    }
+  },
+  failure: (error) => print('Error: $error'),
+);
+```
 
-final result = await
-TangentSDK.instance.purchaseProductById
-('premium_monthly
-'
-,eventToken: 'your_adjust_event_token', // Optional
-eventName: 'premium_subscription', // Optional
+#### Purchase a Consumable (coins, credits, …)
+
+`purchaseConsumable` NEVER touches Superwall subscription status or
+entitlements — buying a consumable must not mark the user as subscribed.
+Revenue is tracked to Adjust via `adjustConsumableToken` (when configured)
+instead of the subscription event token. On Android the purchase is consumed
+so it can be bought again.
+
+```dart
+final result = await TangentSDK.instance.purchaseConsumable(
+  coinProduct,
+  context: {'source': 'coin_store'}, // Optional
 );
 result.when(
-success: (product) => print('Product: $product'),
-failure: (error) => print('
-Error:
-$
-error
-'
-)
-,
+  success: (product) => print('Purchased: $product'),
+  failure: (error) => print('Error: $error'),
 );
 ```
 
-#### Purchase Product Object
+#### Guaranteed Content Delivery (delivery handler)
+
+Per StoreKit/Play guidance, a transaction must only be completed with the
+store **after** the content has been delivered. Register a delivery handler at
+startup — the SDK awaits it before completing each purchased transaction. If
+the handler returns `false` or throws, the transaction is left unfinished and
+the store redelivers it on the next launch (this is the built-in retry for
+crashes mid-delivery, Ask to Buy approvals, etc.).
 
 ```dart
-
-final productsResult = await
-TangentSDK.instance.getProducts
-(['premium_monthly
-'
-]
-);productsResult.when(
-success: (products) async {
-if (products.isNotEmpty) {
-final result = await TangentSDK.instance.purchaseProduct(
-products.first,
-eventToken: 'your_adjust_event_token', // Optional
-eventName: 'premium_subscription', // Optional
-);
-result.when(
-success: (product) => print('Purchased product: $product'),
-failure: (error) => print('Error: $error'),
-);
-}
-},
-failure: (error) => print('Error:
-$
-error
-'
-)
-,
-);
+TangentSDK.instance.setPurchaseDeliveryHandler((details) async {
+  // details.status is PurchaseStatus.restored for restores — don't re-grant
+  // consumables for those.
+  if (details.status == PurchaseStatus.purchased && isCoinProduct(details.productID)) {
+    // Grant idempotently: the store may redeliver after a crash, so dedupe
+    // by details.purchaseID.
+    return await grantCoins(details.productID, transactionId: details.purchaseID);
+  }
+  // details.verificationData carries the store receipt for optional
+  // server-side validation before granting.
+  return true; // Subscriptions: entitlement is handled by Superwall sync
+});
 ```
 
-#### Purchase Context Tracking
+The delivery handler also receives transactions made on **Superwall-presented
+paywalls** (routed from the Superwall delegate's `transactionComplete` event,
+with `verificationSource: 'superwall'`), so coins sold on a Superwall paywall
+are granted through the same path as direct purchases.
 
-Track additional metadata with purchases (e.g., book_title, chapter, source_screen) that will be sent to both Adjust and
-Mixpanel analytics:
-
-**Option 1: Set context before purchase (works with all purchase methods)**
+Passive consumers (success dialogs, analytics) can listen to
+`purchaseUpdatedStream`, which emits after each transaction has been delivered
+AND completed — including deferred and prior-session transactions:
 
 ```dart
-// Set context before any purchase
-TangentSDK.instance.setPurchaseContext
-(
-{'book_title': 'Flutter Mastery',
-'chapter': 'Chapter 5',
-'source_screen': 'reading_page',
-'user_level': 'beginner'
-}
-);
-
-// Purchase through Superwall (context automatically included)
-await TangentSDK.instance.superwallRegisterPlacement('pro_upgrade');
-
-// Or purchase directly (context automatically included)
-await TangentSDK.instance.purchaseProductById('premium_monthly'
-);
+TangentSDK.instance.purchaseUpdatedStream.listen((details) {
+  showPurchaseSuccessDialog(details.productID);
+});
 ```
-
-**Option 2: Pass context directly in purchase methods**
-
-```dart
-// Direct context in purchase call
-final result = await
-TangentSDK.instance.purchaseProductById
-('premium_monthly
-'
-,context: {
-'book_title': 'Flutter Advanced',
-'chapter': 'State Management'
-}
-);
-
-// Context overrides any pending context from setPurchaseContext()
-```
-
-**Context Management**
-
-```dart
-// View current context
-final context = TangentSDK.instance.purchaseContext;
-
-// Clear context
-TangentSDK.instance.clearPurchaseContext
-();
-```
-
-**Analytics Integration**
-
-- **Adjust**: Context data sent as callback parameters
-- **Mixpanel**: Context data included in event properties
-- **Automatic**: Context cleared after successful purchase to prevent reuse
 
 #### Check Active Subscription
 

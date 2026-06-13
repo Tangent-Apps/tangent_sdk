@@ -1,6 +1,7 @@
 library;
 
 export 'package:app_tracking_transparency/app_tracking_transparency.dart' show TrackingStatus;
+export 'package:in_app_purchase/in_app_purchase.dart' show PurchaseStatus;
 export 'package:superwallkit_flutter/superwallkit_flutter.dart'
     show
         RedemptionResult,
@@ -27,6 +28,7 @@ export 'src/core/model/billing_status.dart';
 export 'src/core/model/customer_purchases_info.dart';
 export 'src/core/model/entitlement.dart';
 export 'src/core/model/product.dart';
+export 'src/core/model/purchased_product_details.dart';
 export 'src/core/model/subscription_details.dart';
 export 'src/core/types/result.dart';
 export 'src/core/utils/error_handler.dart';
