@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-18
+
+### Added
+
+- **Configurable entitlement identifier**: New `TangentConfig.proEntitlementId` (defaults to `'Pro'`) controls which
+  entitlement is granted to Superwall after a custom-paywall purchase. Apps whose Superwall dashboard entitlement is
+  not `Pro` (e.g. lowercase `pro`) can now pass the correct identifier.
+
+### Changed
+
+- `_syncSubscriptionToSuperwall()` no longer hard-codes the `'Pro'` entitlement — it uses
+  `TangentConfig.proEntitlementId`. Backward compatible: apps that don't set the field keep `'Pro'`, so behavior is
+  unchanged unless explicitly configured.
+
 ## [0.5.0] - 2026-06-10
 
 ### Added
@@ -62,7 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Attribution API**: New `getAttribution()` passthrough on `TangentSDK` returning `Future<AdjustAttribution?>`
-- Re-exports `AdjustAttribution` from the barrel so consumers can name the return type without a direct `adjust_sdk` import
+- Re-exports `AdjustAttribution` from the barrel so consumers can name the return type without a direct `adjust_sdk`
+  import
 
 ## [0.4.1] - 2026-05-14
 

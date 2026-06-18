@@ -841,10 +841,18 @@ class TangentSDK {
     };
   }
 
-  /// Sync subscription status to Superwall by setting active entitlements
+  /// Sync subscription status to Superwall by setting active entitlements.
+  ///
+  /// Superwall runs in automatic mode (no PurchaseController), but custom
+  /// paywalls purchase through `in_app_purchase` directly. On Android the
+  /// plugin uses its own Play BillingClient, so Superwall doesn't detect the
+  /// purchase until its next launch/foreground re-query — this set bridges
+  /// that gap so the entitlement reflects immediately. It is NOT the source of
+  /// truth (Superwall re-derives status from the store on every launch and on
+  /// renew/expiry), and uses the app's configured [TangentConfig.proEntitlementId].
   Future<void> _syncSubscriptionToSuperwall() async {
     if (_superwallService == null) return;
-    await _superwallService!.setSubscriptionStatus(activeEntitlementIds: ['Pro']);
+    await _superwallService!.setSubscriptionStatus(activeEntitlementIds: [_config.proEntitlementId]);
   }
 
   /// Fire-and-forget wrapper around [trackSubscription].

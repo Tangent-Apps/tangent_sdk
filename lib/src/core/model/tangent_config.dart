@@ -40,6 +40,15 @@ class TangentConfig {
   final String? superwallIOSApiKey;
   final String? superwallAndroidApiKey;
 
+  /// Entitlement identifier granted to Superwall after a custom-paywall
+  /// purchase (see [TangentSDK.purchaseProduct] → `_syncSubscriptionToSuperwall`).
+  ///
+  /// Must match the entitlement identifier configured in the app's Superwall
+  /// dashboard. Apps differ — some use `Pro`, others `pro` — so this is
+  /// configurable per app. Defaults to `'Pro'` to preserve existing behavior
+  /// for apps that don't set it.
+  final String proEntitlementId;
+
   /// Controls whether App Tracking Transparency (ATT) service is initialized.
   /// When enabled, the SDK will automatically initialize the ATT service on iOS
   /// Defaults to `true`.
@@ -133,6 +142,7 @@ class TangentConfig {
     this.enableAutoInitSuperwall = true,
     this.superwallIOSApiKey,
     this.superwallAndroidApiKey,
+    this.proEntitlementId = 'Pro',
     this.enableAppTrackingTransparency = true,
     this.adjustConsumableToken,
     this.adjustOnboardingStartedToken,
