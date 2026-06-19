@@ -128,6 +128,20 @@ class TangentConfig {
   /// Defaults to `true`.
   final bool enableAutoInitAdjust;
 
+  /// Product IDs that are **consumables** (e.g. one-time credits the user can
+  /// buy repeatedly). On Android these must be explicitly *consumed* after the
+  /// content is delivered, otherwise Google Play keeps reporting the item as
+  /// owned ("You already own this item") and the user can never buy it again.
+  ///
+  /// The SDK consumes these (instead of only acknowledging) for both fresh
+  /// `purchased` and redelivered `restored` events, so a purchase that was left
+  /// unconsumed (crash/early-exit) is recovered on the next `restorePurchases`.
+  ///
+  /// Do NOT include subscriptions or permanent one-time products (e.g. lifetime
+  /// access) here. iOS ignores this (StoreKit consumables finish on completion).
+  /// Defaults to empty.
+  final Set<String> consumableProductIds;
+
   const TangentConfig({
     this.mixpanelToken,
     this.adjustAppToken,
@@ -154,5 +168,6 @@ class TangentConfig {
     this.enableMixpanelSubscriptionSync = true,
     this.enableFacebook = false,
     this.enableAutoInitAdjust = true,
+    this.consumableProductIds = const <String>{},
   });
 }

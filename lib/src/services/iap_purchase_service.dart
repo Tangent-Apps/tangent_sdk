@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:tangent_sdk/src/core/exceptions/tangent_sdk_exception.dart';
 import 'package:tangent_sdk/src/core/model/product.dart';
 import 'package:tangent_sdk/src/core/model/purchased_product_details.dart';
@@ -20,6 +24,12 @@ const _tag = 'IAPPurchaseService';
 /// content has been delivered. If delivery fails, the transaction is left
 /// unfinished and the store redelivers it on next launch.
 class IAPPurchaseService {
+  IAPPurchaseService({this.consumableProductIds = const <String>{}});
+
+  /// Product IDs that must be *consumed* on Android (not just acknowledged) so
+  /// Google Play stops reporting them as owned. See [TangentConfig.consumableProductIds].
+  final Set<String> consumableProductIds;
+
   final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
@@ -129,8 +139,14 @@ class IAPPurchaseService {
       _pendingProducts[product.id] = product;
 
       final purchaseParam = PurchaseParam(productDetails: product.productDetails!);
+      // Only take over consumption (autoConsume:false → the SDK consumes in
+      // [_handleSuccessfulPurchase]) on Android AND only for products the host
+      // app declared consumable. Everything else keeps the plugin's default
+      // autoConsume:true — preserving legacy behavior for apps that don't set
+      // [consumableProductIds]. iOS asserts autoConsume must stay true.
+      final bool consumeViaSdk = consumable && Platform.isAndroid && _isConsumable(product.id);
       final started = consumable
-          ? await _iap.buyConsumable(purchaseParam: purchaseParam)
+          ? await _iap.buyConsumable(purchaseParam: purchaseParam, autoConsume: !consumeViaSdk)
           : await _iap.buyNonConsumable(purchaseParam: purchaseParam);
 
       if (!started) {
@@ -238,7 +254,15 @@ class IAPPurchaseService {
       return;
     }
 
-    await _completeWithStore(purchaseDetails);
+    // Consumables on Android must be *consumed* (not just acknowledged), or
+    // Google Play keeps them owned forever ("You already own this item") and
+    // the user can't rebuy. Covers fresh `purchased` and redelivered `restored`
+    // events alike, so a previously-stuck purchase is recovered on restore.
+    if (Platform.isAndroid && _isConsumable(purchaseDetails.productID)) {
+      await _consumeAndroidPurchase(purchaseDetails);
+    } else {
+      await _completeWithStore(purchaseDetails);
+    }
 
     if (!_purchaseUpdatedController.isClosed) {
       _purchaseUpdatedController.add(details);
@@ -293,6 +317,41 @@ class IAPPurchaseService {
       } catch (e, stackTrace) {
         AppLogger.error('Failed to complete purchase with store', error: e, stackTrace: stackTrace, tag: _tag);
       }
+    }
+  }
+
+  /// True if [productID] (normalized for Android's composite `id:basePlan`
+  /// form) is a configured consumable.
+  bool _isConsumable(String productID) {
+    if (consumableProductIds.contains(productID)) return true;
+    final base = productID.contains(':') ? productID.split(':').first : productID;
+    return consumableProductIds.contains(base);
+  }
+
+  /// Consumes a consumable purchase on Android via the Play Billing client, so
+  /// it is no longer owned and can be purchased again. Logs the result with the
+  /// `[IAPDIAG]` prefix (visible in release `adb logcat`, unlike [AppLogger]).
+  Future<void> _consumeAndroidPurchase(PurchaseDetails purchaseDetails) async {
+    try {
+      final InAppPurchaseAndroidPlatformAddition addition =
+          _iap.getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+      final BillingResultWrapper result = await addition.consumePurchase(purchaseDetails);
+      debugPrint(
+        '[IAPDIAG] consume ${purchaseDetails.productID} '
+        '(${purchaseDetails.status.name}) → ${result.responseCode.name}',
+      );
+      if (result.responseCode != BillingResponse.ok) {
+        AppLogger.error(
+          'Consume failed for ${purchaseDetails.productID}: ${result.responseCode} ${result.debugMessage}',
+          tag: _tag,
+        );
+        // Fall back to acknowledgement so the transaction is at least finalized;
+        // it will redeliver and retry consume on the next restore.
+        await _completeWithStore(purchaseDetails);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[IAPDIAG] consume error ${purchaseDetails.productID}: $e');
+      AppLogger.error('Failed to consume purchase', error: e, stackTrace: stackTrace, tag: _tag);
     }
   }
 

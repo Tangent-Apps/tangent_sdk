@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-06-19
+
+### Added
+
+- **`TangentConfig.consumableProductIds`** (`Set<String>`, defaults to `{}`): product IDs the host app
+  declares as consumables. The SDK now *consumes* these on Android (via
+  `InAppPurchaseAndroidPlatformAddition.consumePurchase`) after delivery — for both `purchased` and
+  `restored` events — instead of only acknowledging them.
+
+### Fixed
+
+- **Android consumables stuck owned ("You already own this item")**: consumable purchases were only
+  acknowledged, never consumed, so Google Play kept reporting them as owned and the user could not buy them
+  again (and feature delivery never unlocked). For products listed in `consumableProductIds`, the SDK now
+  buys with `autoConsume: false` and consumes them itself in a single deterministic path, recovering
+  purchases left unconsumed (crash/early-exit) on the next `restorePurchases()`.
+
+### Notes
+
+- Backward compatible: with `consumableProductIds` empty (default), behavior is unchanged — consumables keep
+  the plugin's `autoConsume: true` and are only acknowledged. iOS is unaffected (consume path is Android-only;
+  `autoConsume` stays `true`, as StoreKit requires). Subscriptions and permanent one-time products
+  (e.g. lifetime) must NOT be listed.
+
 ## [0.5.1] - 2026-06-18
 
 ### Added

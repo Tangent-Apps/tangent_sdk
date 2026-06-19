@@ -106,7 +106,7 @@ class TangentSDK {
 
     // Initialize IAP service
     AppLogger.info('Initializing IAP Purchase Service', tag: 'IAP');
-    _iapService = IAPPurchaseService();
+    _iapService = IAPPurchaseService(consumableProductIds: _config.consumableProductIds);
     await _iapService!.initialize();
     AppLogger.info('IAP Purchase Service initialized', tag: 'IAP');
 

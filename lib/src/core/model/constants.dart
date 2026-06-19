@@ -2,4 +2,4 @@
 ///
 /// Update this value when releasing a new version of the SDK.
 /// This version should match the version in pubspec.yaml.
-const String tangentSdkVersion = '0.5.1';
+const String tangentSdkVersion = '0.5.2';
